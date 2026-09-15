@@ -14,8 +14,11 @@ const cfg = { termLive: () => false, env: () => ({}), launchFor: (s) => ({ cwd: 
 export function configure(c) { Object.assign(cfg, c); }
 export const isLive = (s) => (isChat(s) ? chatS(s.id).alive : cfg.termLive(s.id));
 export const isWorking = (s) => isChat(s) && chatS(s.id).working;
-// busy = a turn is running, or the CLI is still starting: either way a new message waits
-export const isBusy = (s) => { if (!isChat(s)) return false; const st = chatS(s.id); return !!(st.working || st.starting || (st.alive && !st.ready)); };
+// busy = a turn is running, or the process is still being spawned. An idle chat, even one
+// whose init event has not arrived yet, takes a message straight away (the CLI buffers stdin).
+export const isBusy = (s) => { if (!isChat(s)) return false; const st = chatS(s.id); return !!(st.working || st.starting); };
+// anything queued while the chat is idle goes out now
+export function drainIfIdle(s) { const st = state.chat[s.id]; if (st && st.alive && !st.working && !st.starting && st.queue.length && !st.queuePaused) drainQueue(s); }
 export const needsInput = (s) => isChat(s) && chatS(s.id).msgs.some((m) => (m.kind === 'perm' || m.kind === 'ask') && !m.resolved);
 
 export function toolVerb(name, input) {

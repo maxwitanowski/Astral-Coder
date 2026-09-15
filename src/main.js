@@ -1105,7 +1105,7 @@ setInterval(async () => {
   for (const s of state.sessions) {
     const cur = state.live[s.id] || {};
     let next;
-    if (chat.isChat(s)) { const c = state.chat[s.id]; next = !c || !c.started ? 'dormant' : !c.alive ? 'dead' : c.working ? 'working' : 'idle'; }
+    if (chat.isChat(s)) { const c = state.chat[s.id]; next = !c || !c.started ? 'dormant' : !c.alive ? 'dead' : c.working ? 'working' : 'idle'; if (next === 'idle') chat.drainIfIdle(s); }
     else if (!tmMain.has(s.id)) next = 'dormant';
     else if (!tmMain.isLive(s.id)) next = 'dead';
     else {
