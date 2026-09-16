@@ -204,22 +204,28 @@ export function confirmModal(title, body, { ok = 'Confirm', danger = true } = {}
 // ---- sounds: Conductor's train whistle when a turn finishes ----
 let actx = null;
 export const sound = {
-  choo() {
+  // a twinkle: a rising four-note sparkle of pure tones with a soft shimmer, then a
+  // final high glint. Short, quiet, and over in under a second.
+  done() {
     if (!state.ui.sounds) return;
     try {
       actx = actx || new (window.AudioContext || window.webkitAudioContext)();
-      const t0 = actx.currentTime;
-      const blow = (at, dur) => {
-        for (const [f, g] of [[440, .18], [554, .16], [660, .14], [880, .05]]) {
+      const t0 = actx.currentTime + 0.02;
+      const ping = (f, at, dur, g) => {
+        for (const [mult, gain, detune] of [[1, g, 0], [2, g * 0.22, 6], [3, g * 0.06, -5]]) {
           const o = actx.createOscillator(); const gn = actx.createGain();
-          o.type = 'triangle'; o.frequency.setValueAtTime(f * 0.98, at); o.frequency.linearRampToValueAtTime(f, at + 0.06);
-          gn.gain.setValueAtTime(0, at); gn.gain.linearRampToValueAtTime(g, at + 0.04); gn.gain.setValueAtTime(g, at + dur - 0.08); gn.gain.linearRampToValueAtTime(0, at + dur);
+          o.type = 'sine'; o.frequency.setValueAtTime(f * mult, at); o.detune.setValueAtTime(detune, at);
+          gn.gain.setValueAtTime(0, at); gn.gain.linearRampToValueAtTime(gain, at + 0.012); gn.gain.exponentialRampToValueAtTime(0.0005, at + dur);
           o.connect(gn).connect(actx.destination); o.start(at); o.stop(at + dur + 0.02);
         }
       };
-      blow(t0, 0.22); blow(t0 + 0.3, 0.42);
+      const notes = [1318.5, 1568, 2093, 2637]; // E6 G6 C7 E7
+      notes.forEach((f, i) => ping(f, t0 + i * 0.085, 0.45, 0.09));
+      ping(3136, t0 + 0.42, 0.7, 0.05);  // G7 glint
+      ping(2093, t0 + 0.5, 0.6, 0.03);
     } catch { /* no audio */ }
   },
+  choo() { this.done(); },
 };
 
 // ---- bus ----

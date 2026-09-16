@@ -74,10 +74,15 @@ export async function chatSend(s, text, { attachments = [] } = {}) {
   st.working = true; st.turnStart = Date.now();
   s.working = true; S.save();
   S.emit('live'); scheduleChat(true);
-  msg.checkpoint = await checkpoint(s);
-  st.lastCheckpoint = msg.checkpoint;
-  const ws = S.workspaceOfSession(s.id);
-  if (ws && msg.checkpoint) { ws.checkpoints.push({ sessionId: s.id, tree: msg.checkpoint, at: msg.at, prompt: text.slice(0, 80) }); if (ws.checkpoints.length > 60) ws.checkpoints.splice(0, ws.checkpoints.length - 60); S.save(); }
+  // The pre-turn snapshot gets a short head start so its baseline predates the
+  // agent's edits, but it never holds the prompt back for long: a big repo
+  // finishes in the background while Claude is already reading.
+  const snap = checkpoint(s).then((tree) => {
+    msg.checkpoint = tree; st.lastCheckpoint = tree;
+    const ws = S.workspaceOfSession(s.id);
+    if (ws && tree) { ws.checkpoints.push({ sessionId: s.id, tree, at: msg.at, prompt: text.slice(0, 80) }); if (ws.checkpoints.length > 60) ws.checkpoints.splice(0, ws.checkpoints.length - 60); S.save(); }
+  });
+  await Promise.race([snap, new Promise((r) => setTimeout(r, 300))]);
   const images = attachments.filter((a) => a.kind === 'image').map((a) => ({ type: 'image', source: { type: 'base64', media_type: a.media_type, data: a.data } }));
   raw(s.id, { type: 'user', message: { role: 'user', content: [...images, { type: 'text', text: full }] } });
   scheduleChat(true);
@@ -264,6 +269,9 @@ export function persist(s, now = false) {
   clearTimeout(persistTimers.get(s.id));
   if (now) write(); else persistTimers.set(s.id, setTimeout(write, 1500));
 }
+// markdown is memoised by source text, so a re-render only parses what changed
+const mdCache = new Map();
+function mdc(text) { let v = mdCache.get(text); if (v === undefined) { if (mdCache.size > 600) mdCache.clear(); v = md(text); mdCache.set(text, v); } return v; }
 let chatRaf = null, chatForce = false, target = { el: null, session: null };
 export function mount(el, getSession) { target = { el, getSession }; }
 export function scheduleChat(force = false) { chatForce = chatForce || force; if (chatRaf) return; chatRaf = requestAnimationFrame(() => { chatRaf = null; renderChat(chatForce); chatForce = false; }); }
@@ -273,7 +281,17 @@ export function lastAssistantText(s) {
   return '';
 }
 
+// tool rows are memoised per block: their HTML only changes when the block does
+const rowCache = new WeakMap();
 function toolRow(b, open) {
+  const sig = `${b.done}|${b.error}|${(b.result || '').length}|${open.has(b.id)}|${(b.sub || []).length}|${(b.json || '').length}|${b.input && b.input.todos ? JSON.stringify(b.input.todos).length : 0}`;
+  const c = rowCache.get(b);
+  if (c && c.sig === sig) return c.html;
+  const html = toolRowBuild(b, open);
+  rowCache.set(b, { sig, html });
+  return html;
+}
+function toolRowBuild(b, open) {
   const [verb, tgt] = b.verb ? [b.verb, b.target] : toolVerb(b.name, b.input);
   if (b.name === 'TodoWrite' && b.input && b.input.todos) {
     const todos = b.input.todos;
@@ -307,16 +325,24 @@ export function renderChat(force = false) {
   const s = target.getSession ? target.getSession() : null;
   if (!s || !isChat(s)) return;
   const st = chatS(s.id);
-  if (el.dataset.session !== s.id) { el.dataset.session = s.id; el.innerHTML = ''; force = true; }
-  const nearBottom = force || el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+  if (el.dataset.session !== s.id) { el.dataset.session = s.id; el.innerHTML = ''; st.domParts = null; force = true; }
+  // never pull the view while the reader is selecting text in it
+  const sel = window.getSelection();
+  const selecting = sel && !sel.isCollapsed && sel.rangeCount && el.contains(sel.getRangeAt(0).commonAncestorContainer);
+  const nearBottom = (force || el.scrollHeight - el.scrollTop - el.clientHeight < 140) && !selecting;
   const open = new Set([...el.querySelectorAll('.tool.is-open')].map((x) => x.dataset.tool));
   const openThink = new Set([...el.querySelectorAll('details.think[open]')].map((x) => x.dataset.k));
   if (!st.msgs.length) {
     el.innerHTML = `<div class="chat-empty">${st.hydrating ? 'Loading the conversation…' : st.started ? (st.alive ? `<div class="big">Claude is ready.</div><div>Describe what you want done in this workspace.</div>` : 'Claude is not running. Send a message to start it.') : `<div class="big">Start the conversation.</div><div>Your message starts Claude Code in this workspace. Files, terminal and diff are on the right.</div>`}</div>`;
+    st.domParts = null;
     return;
   }
+  // one HTML string per row; rows whose string is unchanged keep their DOM nodes
+  const parts = [];
   let html = '';
+  const flush = () => { if (html) { parts.push(html); html = ''; } };
   st.msgs.forEach((m, i) => {
+    flush();
     if (m.kind === 'user') { const atts = (m.attachments || []).filter((a) => a.kind !== 'image'), imgs = (m.attachments || []).filter((a) => a.kind === 'image'); html += `<div class="msg user"><div class="bubble">${imgs.length ? `<div class="imgs">${imgs.map((a) => `<img src="${a.dataUrl}" alt="${esc(a.name)}" title="${esc(`${a.name} · ${a.w}×${a.h}`)}" data-img-zoom="1">`).join('')}</div>` : ''}${atts.length ? `<div class="atts">${atts.map((a) => `<span class="att">${ic(a.kind === 'comment' ? 'message' : 'paperclip', 'i-sm')}${esc(a.kind === 'comment' ? `${basename(a.file)}${a.line ? ':' + a.line : ''}` : a.kind === 'file' ? basename(a.path) : 'note')}</span>`).join('')}</div>` : ''}${esc(m.text)}</div></div>`; }
     else if (m.kind === 'sys') html += `<div class="sysline ${m.err ? 'err' : ''}">${esc(m.text)}</div>`;
     else if (m.kind === 'turn') html += `<div class="turn ${m.error ? 'err' : ''}"><span class="t">${m.error ? ic('xCircle', 'i-sm') : ic('checkCircle', 'i-sm')}${m.ms ? (m.ms / 1000).toFixed(1) + 's' : 'done'}</span>${m.cost ? `<span>$${m.cost.toFixed(2)}</span>` : ''}${m.diff ? (m.diff.files ? `<button class="turn-diff" data-turn-diff="${esc(m.from)}" title="Show what this turn changed">${ic('gitCompare', 'i-sm')}<span class="a">+${m.diff.add}</span><span class="d">−${m.diff.del}</span><span>${m.diff.files} file${m.diff.files === 1 ? '' : 's'}</span></button>` : '<span class="nochange">no file changes</span>') : ''}${m.error ? `<span class="errtext">${esc(m.text || 'error')}</span>` : ''}</div>`;
@@ -329,7 +355,7 @@ export function renderChat(force = false) {
       for (let j = 0; j < blocks.length; j++) {
         const b = blocks[j];
         const streaming = st.working && isLast && j === blocks.length - 1;
-        if (b.type === 'text') { if (b.text && b.text.trim()) body += `<div class="md">${md(b.text)}</div>`; }
+        if (b.type === 'text') { if (b.text && b.text.trim()) body += `<div class="md">${mdc(b.text)}</div>`; }
         else if (b.type === 'thinking') { if (b.text && b.text.trim()) { const k = `${i}-${j}`; body += `<details class="think ${streaming ? 'is-live' : ''}" data-k="${k}" ${openThink.has(k) ? 'open' : ''}><summary>${ic('brain', 'i-sm')}<span>${streaming ? 'Thinking…' : 'Thinking'}</span></summary><div>${esc(b.text)}</div></details>`; } }
         else if (b.type === 'tool_use') {
           let k = j; const group = [];
@@ -347,7 +373,17 @@ export function renderChat(force = false) {
     }
   });
   const last = st.msgs[st.msgs.length - 1];
-  if (st.working && last && last.kind === 'user') html += `<div class="msg assistant"><span class="who">${WORK('claude')}</span><div class="body"><div class="working">${WORK('claude', { mode: 'line', key: s.id, since: st.turnStart, hint: true, glyph: false })}</div></div></div>`;
-  el.innerHTML = html;
+  flush();
+  if (st.working && last && last.kind === 'user') parts.push(`<div class="msg assistant"><span class="who">${WORK('claude')}</span><div class="body"><div class="working">${WORK('claude', { mode: 'line', key: s.id, since: st.turnStart, hint: true, glyph: false })}</div></div></div>`);
+  // reconcile: replace only the rows that changed (normally just the last one)
+  const prev = st.domParts;
+  if (!prev) el.innerHTML = '';
+  const kids = el.children;
+  for (let i = 0; i < parts.length; i++) {
+    if (i < kids.length) { if (!prev || prev[i] !== parts[i]) kids[i].outerHTML = parts[i]; }
+    else el.insertAdjacentHTML('beforeend', parts[i]);
+  }
+  while (kids.length > parts.length) el.lastElementChild.remove();
+  st.domParts = parts;
   if (nearBottom) el.scrollTop = el.scrollHeight;
 }

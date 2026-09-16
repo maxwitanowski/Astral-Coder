@@ -308,6 +308,8 @@ ipcMain.handle('git:commitPush', async (_e, dir, message, push) => {
     return { ok: true, committed, log: log.join('\n') };
   } catch (err) { return { ok: false, error: errText(err), log: log.join('\n') }; }
 });
+ipcMain.handle('git:init', async (_e, dir) => { try { await git(dir, ['init', '-b', 'main']); return { ok: true }; } catch (err) { return { ok: false, error: errText(err) }; } });
+ipcMain.handle('git:remoteAdd', async (_e, dir, url) => { try { try { await git(dir, ['remote', 'remove', 'origin']); } catch { /* none */ } await git(dir, ['remote', 'add', 'origin', url]); return { ok: true }; } catch (err) { return { ok: false, error: errText(err) }; } });
 ipcMain.handle('git:fetch', async (_e, dir) => { try { await git(dir, ['fetch', 'origin', '--prune'], { timeout: 60000 }); return { ok: true }; } catch (err) { return { ok: false, error: errText(err) }; } });
 ipcMain.handle('git:pullLatest', async (_e, dir, base) => {
   try {

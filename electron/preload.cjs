@@ -20,7 +20,7 @@ contextBridge.exposeInMainWorld('astral', {
   onNotifyClick: (fn) => on('notify:click', fn),
   fs: { list: inv('fs:list'), read: inv('fs:read'), exists: inv('fs:exists'), writeText: inv('fs:writeText') },
   git: {
-    info: inv('git:info'), snapshot: inv('git:snapshot'), changes: inv('git:changes'), diffFile: inv('git:diffFile'), show: inv('git:show'), log: inv('git:log'),
+    info: inv('git:info'), init: inv('git:init'), remoteAdd: inv('git:remoteAdd'), snapshot: inv('git:snapshot'), changes: inv('git:changes'), diffFile: inv('git:diffFile'), show: inv('git:show'), log: inv('git:log'),
     branches: inv('git:branches'), renameBranch: inv('git:renameBranch'), commitPush: inv('git:commitPush'), fetch: inv('git:fetch'), pullLatest: inv('git:pullLatest'), mergeBase: inv('git:mergeBase'),
     worktreeAdd: inv('git:worktreeAdd'), worktreeRemove: inv('git:worktreeRemove'), worktreeList: inv('git:worktreeList'), deleteBranch: inv('git:deleteBranch'), clone: inv('git:clone'),
   },

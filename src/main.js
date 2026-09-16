@@ -77,7 +77,26 @@ app.innerHTML = `
   <aside class="panel">
     <div class="panel-tabs" id="panel-tabs"></div>
     <div class="panel-body" id="panel-body"></div>
-  </aside>`;
+  </aside>
+  <div class="gutter left no-drag" id="gut-left" title="Drag to resize"></div>
+  <div class="gutter right no-drag" id="gut-right" title="Drag to resize"></div>
+  <div class="edge-top no-drag"></div>`;
+// sidebar / panel widths: dragged at the gutters, remembered in ui settings
+function applyWidths() { const r = document.documentElement.style; r.setProperty('--sidebar-w', (state.ui.sidebarW || 268) + 'px'); r.setProperty('--panel-w', (state.ui.panelW || 400) + 'px'); }
+(() => {
+  let drag = null;
+  const start = (side) => (e) => { drag = { side, x: e.clientX, w: side === 'left' ? (state.ui.sidebarW || 268) : (state.ui.panelW || 400) }; app.classList.add('resizing'); document.body.style.cursor = 'col-resize'; e.preventDefault(); };
+  $('gut-left').addEventListener('mousedown', start('left'));
+  $('gut-right').addEventListener('mousedown', start('right'));
+  window.addEventListener('mousemove', (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x;
+    if (drag.side === 'left') state.ui.sidebarW = Math.max(200, Math.min(520, drag.w + dx));
+    else state.ui.panelW = Math.max(280, Math.min(Math.max(280, window.innerWidth - 700), drag.w - dx));
+    applyWidths();
+  });
+  window.addEventListener('mouseup', () => { if (drag) { drag = null; app.classList.remove('resizing'); document.body.style.cursor = ''; S.save(); tmMain.scheduleFit(); tmDrawer.scheduleFit(); } });
+})();
 
 // ---------------------------------------------------------------- terminals
 // One manager for agents that draw their own TUI in the main area, one for the
@@ -571,7 +590,7 @@ function renderSettings() {
         <div class="srow"><div><div class="sl">Follow-up behavior</div><div class="ss">What Enter does while the agent is working. Ctrl+Enter does the opposite.</div></div>${seg('followUp', [['queue', 'Queue'], ['steer', 'Interrupt']])}</div>
         ${tog('claudeHome', 'Start Claude Code in your home folder', `Claude keeps its auto-memory per start folder. On, Claude starts in <code>${esc(PATHS.home)}</code> and the workspace is added with --add-dir, so it sees the memory you built up there. Off, it starts in the workspace like a normal <code>claude</code> in that folder. Applies to newly started sessions.`)}
         ${tog('notifications', 'Notifications', 'Desktop notification when a turn finishes or an agent needs input while you are elsewhere.')}
-        <div class="srow"><div><div class="sl">Sounds</div><div class="ss">A train whistle when a turn finishes in another workspace.</div></div><div class="row-acts"><button class="btn ghost" data-act="sound-test">${ic('volume', 'i-sm')}<span>Test</span></button><button class="toggle ${state.ui.sounds ? 'is-on' : ''}" data-ui-toggle="sounds"><span></span></button></div></div></div>
+        <div class="srow"><div><div class="sl">Sounds</div><div class="ss">A twinkle when an agent finishes while you are in another workspace.</div></div><div class="row-acts"><button class="btn ghost" data-act="sound-test">${ic('volume', 'i-sm')}<span>Test</span></button><button class="toggle ${state.ui.sounds ? 'is-on' : ''}" data-ui-toggle="sounds"><span></span></button></div></div></div>
       <div class="sgroup"><h3>Sidebar</h3>
         <div class="srow"><div><div class="sl">Sort workspaces</div><div class="ss">By last activity or by creation time.</div></div>${seg('sidebarSort', [['updated', 'Updated'], ['created', 'Created']])}</div></div>
       <div class="sgroup"><h3>Storage</h3><div class="srow"><div><div class="sl">Workspaces live in</div><div class="ss"><code>${esc(PATHS.workspacesRoot)}</code> — the same layout Conductor uses.</div></div><button class="btn ghost" data-open-path="${esc(PATHS.workspacesRoot)}">${ic('folder', 'i-sm')}<span>Open</span></button></div></div>`;
@@ -862,6 +881,14 @@ async function pullLatest(ws) {
   toast(`Pull failed: ${r.error}`, true);
 }
 async function commitPushDialog(ws) {
+  let g = state.git[ws.path] || (await refreshGitFor(ws.path));
+  if (!g || !g.isRepo) {
+    const ok = await confirmModal('Not a git repository', `<p>${esc(basename(ws.path))} is not a git repository yet. Initialise one here so the changes can be committed?</p>`, { ok: 'Initialise repository', danger: false });
+    if (!ok) return;
+    const r = await window.astral.git.init(ws.path);
+    if (!r.ok) { toast(`git init failed: ${r.error}`, true); return; }
+    g = await refreshGitFor(ws.path); refreshChanges(true);
+  }
   const s = S.activeSession();
   const last = s && chat.isChat(s) ? [...chat.chatS(s.id).msgs].reverse().find((m) => m.kind === 'user') : null;
   const m = modal(`<h3>Commit &amp; push</h3><p class="sub">Commits everything in the working tree directly, without going through the agent, and pushes the branch.</p>
@@ -871,7 +898,14 @@ async function commitPushDialog(ws) {
   const go = async (push) => {
     const text = msg.value.trim(); if (!text) { msg.focus(); return; }
     m.close(); toast(push ? 'Committing and pushing…' : 'Committing…');
-    const r = await window.astral.git.commitPush(ws.path, text, push);
+    let r = await window.astral.git.commitPush(ws.path, text, push);
+    if (!r.ok && push && /no configured push destination|'origin' does not appear|does not appear to be a git repository|No such remote|fatal: No remote/i.test(r.error)) {
+      const url = await promptModal('This repository has no origin remote. Paste the GitHub repository URL to push to', `https://github.com/`, { ok: 'Add remote and push' });
+      if (url === null) { toast(r.committed ? 'Committed. Not pushed: no remote.' : 'Not pushed: no remote.', true); refreshGitFor(ws.path); refreshChanges(true); return; }
+      const a = await window.astral.git.remoteAdd(ws.path, url.trim());
+      if (!a.ok) { toast(`Could not add remote: ${a.error.split('\n').pop()}`, true); return; }
+      r = await window.astral.git.commitPush(ws.path, text, true);
+    }
     if (!r.ok) { toast(`Failed: ${r.error.split('\n').pop()}`, true); return; }
     toast(r.committed ? (push ? 'Committed and pushed.' : 'Committed.') : (push ? 'Nothing new to commit; pushed.' : 'Nothing to commit.'));
     refreshGitFor(ws.path); refreshChanges(true); refreshPR(ws, true);
@@ -1119,7 +1153,7 @@ setInterval(async () => {
       const elsewhere = ws && (ws.id !== state.activeWorkspaceId || !state.winFocused);
       const attention = settled && elsewhere && s.agent !== 'shell' && !chat.isChat(s);
       state.live[s.id] = { ...cur, status: next, attention: attention || (cur.attention && next !== 'working'), workingSince: next === 'working' ? now : cur.workingSince };
-      if (attention && ws) { ws.unread = true; notify(ws, `${agentOf(s.agent).name} is waiting`); sound.choo(); }
+      if (attention && ws) { ws.unread = true; notify(ws, `${agentOf(s.agent).name} is waiting`); sound.done(); }
       if (ws && next === 'working') S.touchWorkspace(ws.id);
       changed = true;
     }
@@ -1402,7 +1436,7 @@ async function action(act, el, e) {
     case 'install-gh': return installGh();
     case 'gh-recheck': state.ghAvailable = await window.astral.gh.recheck(); toast(state.ghAvailable ? 'GitHub CLI found.' : 'gh is still not on PATH.', !state.ghAvailable); S.emit('pr'); if (state.view === 'settings') renderSettings(); return;
     case 'gh-login': if (ws) runInDrawer(ws, 'install:ghlogin', 'gh auth login', 'gh auth login'); return;
-    case 'sound-test': return sound.choo();
+    case 'sound-test': return sound.done();
   }
 }
 document.addEventListener('contextmenu', (e) => {
@@ -1526,7 +1560,7 @@ window.__astral = { state, S, tmMain, tmDrawer, REGISTRY, chat, diff };
   PATHS = await window.astral.app.paths();
   state.winFocused = await window.astral.win.isFocused();
   await S.load();
-  applyTheme();
+  applyTheme(); applyWidths();
   if (state.activeWorkspaceId) { state.history = [state.activeWorkspaceId]; state.historyIdx = 0; }
   for (const r of state.repos) loadScripts(r);
   state.ghAvailable = await window.astral.gh.available();

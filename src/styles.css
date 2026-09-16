@@ -61,6 +61,14 @@ kbd { font: 10.5px var(--sans); color: var(--fg-3); background: var(--bg-3); bor
 #app.side-closed { grid-template-columns: 0px minmax(0, 1fr) var(--panel-w); }
 #app.panel-closed { grid-template-columns: var(--sidebar-w) minmax(0, 1fr) 0px; }
 #app.side-closed.panel-closed { grid-template-columns: 0px minmax(0, 1fr) 0px; }
+#app.resizing { transition: none; } #app.resizing * { user-select: none !important; }
+/* drag handles on the two inner edges; the top strip keeps the OS resize edge reachable above the drag regions */
+.gutter { position: absolute; top: 0; bottom: 0; width: 7px; z-index: 40; cursor: col-resize; }
+.gutter::after { content: ''; position: absolute; top: 0; bottom: 0; left: 3px; width: 1px; background: transparent; transition: background .12s; }
+.gutter:hover::after, #app.resizing .gutter::after { background: var(--accent); }
+.gutter.left { left: calc(var(--sidebar-w) - 3px); } .gutter.right { right: calc(var(--panel-w) - 3px); }
+#app.side-closed .gutter.left, #app.panel-closed .gutter.right { display: none; }
+.edge-top { position: fixed; top: 0; left: 0; right: 0; height: 5px; z-index: 50; }
 #app.side-closed .sidebar, #app.panel-closed .panel { visibility: hidden; }
 
 /* ---------- buttons ---------- */
