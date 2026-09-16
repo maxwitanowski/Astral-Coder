@@ -29,60 +29,66 @@
 :root[data-font="inter"] { --sans: Inter, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
 :root[data-font="mono"] { --sans: var(--mono); }
 
-/* ---------- Terminal skin: a phosphor CRT over the same layout. Tokens only, plus a few quirks. ---------- */
-:root[data-skin="terminal"] { --ph: 126 231 135; }
-:root[data-skin="terminal"][data-phosphor="amber"] { --ph: 255 183 77; }
-:root[data-skin="terminal"][data-phosphor="ice"] { --ph: 125 211 252; }
-:root[data-skin="terminal"][data-phosphor="plasma"] { --ph: 244 114 182; }
+/* ---------- Terminal skin: Astral dressed like Claude Code running in a terminal.
+   Same layout, same controls. Terminal black, monospace, Claude's orange and the
+   lavender it uses for dialogs, ⏺ and ⎿ markers, a > prompt box. Nothing glows. */
 :root[data-skin="terminal"] {
-  --bg: color-mix(in srgb, rgb(var(--ph)) 3%, #040404); --bg-2: color-mix(in srgb, rgb(var(--ph)) 5%, #040404); --bg-3: color-mix(in srgb, rgb(var(--ph)) 9%, #040404); --bg-4: color-mix(in srgb, rgb(var(--ph)) 14%, #040404);
-  --sidebar: color-mix(in srgb, rgb(var(--ph)) 2%, #030303); --panel: color-mix(in srgb, rgb(var(--ph)) 4%, #040404); --card: color-mix(in srgb, rgb(var(--ph)) 6%, #040404);
-  --fg: rgb(var(--ph)); --fg-2: rgb(var(--ph) / .8); --fg-3: rgb(var(--ph) / .58); --fg-4: rgb(var(--ph) / .36);
-  --border: rgb(var(--ph) / .2); --border-2: rgb(var(--ph) / .32); --ring: rgb(var(--ph) / .55);
-  --primary: rgb(var(--ph)); --primary-fg: #040404;
-  --accent: rgb(var(--ph)); --accent-bg: rgb(var(--ph) / .14);
-  --ok: rgb(var(--ph)); --ok-bg: rgb(var(--ph) / .12); --warn: #ffb74d; --warn-bg: rgba(255,183,77,.12); --bad: #ff6b5f; --bad-bg: rgba(255,107,95,.12); --info: rgb(var(--ph)); --info-bg: rgb(var(--ph) / .1); --purple: rgb(var(--ph));
-  --diff-add-bg: rgb(var(--ph) / .12); --diff-add-fg: rgb(var(--ph)); --diff-add-g: rgb(var(--ph) / .22); --diff-del-bg: rgba(255,107,95,.12); --diff-del-fg: #ff6b5f; --diff-del-g: rgba(255,107,95,.22); --diff-hunk: rgb(var(--ph) / .08);
-  --hover: rgb(var(--ph) / .08); --selected: rgb(var(--ph) / .15); --shadow: 0 0 0 1px rgb(var(--ph) / .35), 0 0 40px rgb(var(--ph) / .12);
-  --radius: 0px; --radius-lg: 0px;
+  --bg: #0d0d0d; --bg-2: #121212; --bg-3: #1a1a1a; --bg-4: #242424;
+  --sidebar: #0a0a0a; --panel: #0f0f0f; --card: #151515;
+  --fg: #e6e4e1; --fg-2: #b5b3ae; --fg-3: #8c8a86; --fg-4: #5a5956;
+  --border: #262626; --border-2: #363636; --ring: #d97757;
+  --primary: #d97757; --primary-fg: #0d0d0d;
+  --accent: #d97757; --accent-bg: rgba(217,119,87,.16);
+  --ok: #4ebc65; --ok-bg: rgba(78,188,101,.14); --warn: #ffc107; --warn-bg: rgba(255,193,7,.12); --bad: #ff6b6b; --bad-bg: rgba(255,107,107,.14); --info: #b1b9f9; --info-bg: rgba(177,185,249,.14); --purple: #af87ff;
+  --diff-add-bg: #1c3a22; --diff-add-fg: #7ee787; --diff-add-g: #225c2b; --diff-del-bg: #3d1f1f; --diff-del-fg: #ff9a9a; --diff-del-g: #7a2929; --diff-hunk: #1a1f33;
+  --hover: rgba(255,255,255,.06); --selected: rgba(177,185,249,.14); --shadow: 0 0 0 1px #363636;
+  --radius: 4px; --radius-lg: 6px;
   --sans: var(--mono);
-  --claude: rgb(var(--ph));
+  --claude: #d97757;
 }
-:root[data-skin="terminal"] body { text-shadow: 0 0 5px rgb(var(--ph) / .22); }
-/* the glass: static scanlines, a vignette, and a faint refresh band drifting down every few seconds */
-:root[data-skin="terminal"] body::before { content: ''; position: fixed; inset: 0; z-index: 9998; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 60%, rgba(0,0,0,.35) 100%); }
-:root[data-skin="terminal"] body::after { content: ''; position: fixed; left: 0; right: 0; top: -12%; height: 12%; z-index: 9998; pointer-events: none; background: linear-gradient(180deg, transparent, rgb(var(--ph) / .05), transparent); animation: crt-band 9s linear infinite; }
-@keyframes crt-band { to { transform: translateY(1000%); } }
-:root[data-skin="terminal"] ::selection { background: rgb(var(--ph) / .85); color: #040404; text-shadow: none; }
-:root[data-skin="terminal"] * { scrollbar-color: rgb(var(--ph) / .35) transparent; }
-:root[data-skin="terminal"] ::-webkit-scrollbar { width: 8px; height: 8px; } :root[data-skin="terminal"] ::-webkit-scrollbar-thumb { background: rgb(var(--ph) / .3); border: 2px solid transparent; background-clip: content-box; }
-:root[data-skin="terminal"] img:not(.mark) { filter: saturate(.2) sepia(.4) hue-rotate(60deg) contrast(1.05); }
-:root[data-skin="terminal"] .side-top .logo .mark { filter: brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(60deg) brightness(1.3); }
-:root[data-skin="terminal"][data-phosphor="amber"] .side-top .logo .mark { filter: brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(-10deg) brightness(1.2); }
-:root[data-skin="terminal"][data-phosphor="ice"] .side-top .logo .mark { filter: brightness(0) invert(1) sepia(1) saturate(3) hue-rotate(150deg) brightness(1.3); }
-:root[data-skin="terminal"][data-phosphor="plasma"] .side-top .logo .mark { filter: brightness(0) invert(1) sepia(1) saturate(4) hue-rotate(280deg) brightness(1.2); }
-:root[data-skin="terminal"] .side-top .logo span::after { content: '▮'; margin-left: 2px; animation: crt-blink 1.1s steps(1) infinite; }
-@keyframes crt-blink { 50% { opacity: 0; } }
-:root[data-skin="terminal"] .btn { border: 1px solid var(--border-2); text-transform: lowercase; letter-spacing: .02em; }
-:root[data-skin="terminal"] .btn::before { content: '['; color: var(--fg-3); margin-right: 5px; } :root[data-skin="terminal"] .btn::after { content: ']'; color: var(--fg-3); margin-left: 5px; }
-:root[data-skin="terminal"] .btn.primary { box-shadow: 0 0 12px rgb(var(--ph) / .35); } :root[data-skin="terminal"] .btn.primary::before, :root[data-skin="terminal"] .btn.primary::after { color: var(--primary-fg); }
-:root[data-skin="terminal"] .tab.is-active .t::before { content: '['; color: var(--fg-3); margin-right: 3px; } :root[data-skin="terminal"] .tab.is-active .t::after { content: ']'; color: var(--fg-3); margin-left: 3px; }
-:root[data-skin="terminal"] .ws-row.is-active .t::before { content: '> '; color: var(--fg); }
-:root[data-skin="terminal"] .sgroup h3::before { content: '# '; color: var(--fg-3); }
-:root[data-skin="terminal"] .chip-btn, :root[data-skin="terminal"] .chip-btn span { white-space: nowrap; }
-:root[data-skin="terminal"] .composer .hint { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-:root[data-skin="terminal"] .toast { box-shadow: 0 0 18px rgb(var(--ph) / .4); } :root[data-skin="terminal"] .toast::before { content: '> '; }
-:root[data-skin="terminal"] .composer { border: 1px dashed var(--border-2); box-shadow: inset 0 0 24px rgb(var(--ph) / .05); }
-:root[data-skin="terminal"] .composer:focus-within { border-style: solid; box-shadow: 0 0 16px rgb(var(--ph) / .25), inset 0 0 24px rgb(var(--ph) / .05); }
-:root[data-skin="terminal"] .composer textarea, :root[data-skin="terminal"] input, :root[data-skin="terminal"] .q .qt { caret-color: rgb(var(--ph)); caret-shape: block; }
-:root[data-skin="terminal"] .msg.user .bubble { border-left: 2px solid rgb(var(--ph)); background: rgb(var(--ph) / .07); }
-:root[data-skin="terminal"] .md pre, :root[data-skin="terminal"] .tool .out { border: 1px solid var(--border-2); background: #030303; }
-:root[data-skin="terminal"] .modal, :root[data-skin="terminal"] .menu { border: 1px solid rgb(var(--ph) / .5); }
-:root[data-skin="terminal"] kbd { border-color: var(--border-2); background: transparent; }
-:root[data-skin="terminal"] .toggle.is-on { box-shadow: 0 0 10px rgb(var(--ph) / .5); }
-:root[data-skin="terminal"] .seg button.is-on { box-shadow: 0 0 8px rgb(var(--ph) / .3); }
-:root[data-skin="terminal"] .chat-empty .big::after { content: '_'; animation: crt-blink 1.1s steps(1) infinite; }
-:root[data-skin="terminal"] .stripe { box-shadow: 0 0 6px currentColor; }
+:root[data-skin="terminal"] body { font-size: 12.5px; }
+:root[data-skin="terminal"] ::selection { background: rgba(177,185,249,.35); }
+:root[data-skin="terminal"] * { scrollbar-color: #363636 transparent; }
+:root[data-skin="terminal"] ::-webkit-scrollbar { width: 8px; height: 8px; } :root[data-skin="terminal"] ::-webkit-scrollbar-thumb { background: #363636; border: 2px solid transparent; background-clip: content-box; }
+/* the prompt box: a thin rounded frame with a > like Claude Code's input */
+:root[data-skin="terminal"] .composer { border: 1px solid #4a4a4a; border-radius: 6px; box-shadow: none; background: var(--bg); }
+:root[data-skin="terminal"] .composer:focus-within { border-color: #6a6a6a; box-shadow: none; }
+:root[data-skin="terminal"] .composer textarea { padding-left: 18px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='14'%3E%3Ctext x='0' y='11' font-family='Cascadia Mono,Consolas,monospace' font-size='13' fill='%23d97757'%3E%3E%3C/text%3E%3C/svg%3E") no-repeat 0 7px; }
+:root[data-skin="terminal"] .composer .hint { color: var(--fg-4); }
+:root[data-skin="terminal"] .composer .send { border-radius: 4px; }
+/* messages: user prompts as > lines in a gray box, tool calls as ⏺ rows with ⎿ results, plain turn footers */
+:root[data-skin="terminal"] .msg.user .bubble { background: #1e1e1e; border-radius: 4px; margin-left: 0; padding: 8px 12px 8px 26px; position: relative; }
+:root[data-skin="terminal"] .msg.user .bubble::before { content: '>'; position: absolute; left: 12px; top: 8px; color: var(--fg-3); }
+:root[data-skin="terminal"] .tool .th .i, :root[data-skin="terminal"] .tool .th .i-sm { display: none; }
+:root[data-skin="terminal"] .btn.primary kbd, :root[data-skin="terminal"] .btn.primary .kbd { color: inherit; background: rgba(0,0,0,.22); border-color: transparent; }
+:root[data-skin="terminal"] .tool .th::before { content: '⏺'; color: var(--fg-2); width: 15px; flex: none; text-align: center; line-height: 1; }
+:root[data-skin="terminal"] .tool.done .th::before { color: var(--ok); } :root[data-skin="terminal"] .tool.error .th::before { color: var(--bad); } :root[data-skin="terminal"] .tool.pending .th::before { color: var(--claude); }
+:root[data-skin="terminal"] .tool .th .verb { color: var(--fg); } :root[data-skin="terminal"] .tool .th .target { color: var(--fg-3); }
+:root[data-skin="terminal"] .tool .th .target::before { content: '('; } :root[data-skin="terminal"] .tool .th .target::after { content: ')'; }
+:root[data-skin="terminal"] .tool .out { border: 0; background: transparent; padding-left: 22px; position: relative; margin-left: 24px; }
+:root[data-skin="terminal"] .tool .out::before { content: '⎿'; position: absolute; left: 4px; top: 8px; color: var(--fg-4); }
+:root[data-skin="terminal"] .tool .sub-live { padding-left: 46px; }
+:root[data-skin="terminal"] .md pre { background: #121212; border-color: #2a2a2a; }
+:root[data-skin="terminal"] .turn { color: var(--fg-4); }
+:root[data-skin="terminal"] .think summary { color: var(--fg-3); font-style: italic; }
+:root[data-skin="terminal"] .perm { border: 1px solid #b1b9f9; border-radius: 6px; background: var(--bg); } :root[data-skin="terminal"] .perm .q b { color: #b1b9f9; }
+:root[data-skin="terminal"] .perm .btn.primary { background: #b1b9f9; color: #0d0d0d; }
+:root[data-skin="terminal"] .chip-btn.is-plan { color: #4a968c; }
+/* chrome: flat, thin rules, ❯ on the selected items like Claude Code's menus */
+:root[data-skin="terminal"] .btn { border: 1px solid var(--border-2); box-shadow: none; }
+:root[data-skin="terminal"] .btn.primary { border-color: var(--primary); }
+:root[data-skin="terminal"] .ws-row.is-active .t::before, :root[data-skin="terminal"] .tab.is-active .t::before, :root[data-skin="terminal"] .snav button.is-active::before, :root[data-skin="terminal"] .menu button.checked .lbl::before { content: '❯ '; color: var(--claude); }
+:root[data-skin="terminal"] .ws-row .stripe.working { background: var(--claude); }
+:root[data-skin="terminal"] .toast { border-radius: 4px; box-shadow: none; border: 1px solid var(--border-2); background: var(--bg-3); color: var(--fg); }
+:root[data-skin="terminal"] .toast.error { border-color: var(--bad); color: var(--bad); background: var(--bg-3); }
+:root[data-skin="terminal"] .modal, :root[data-skin="terminal"] .menu { border: 1px solid #4a4a4a; border-radius: 6px; box-shadow: 0 8px 30px rgba(0,0,0,.6); }
+:root[data-skin="terminal"] .sgroup h3 { color: var(--claude); }
+:root[data-skin="terminal"] .sec-h { color: var(--fg-2); }
+:root[data-skin="terminal"] kbd { background: transparent; border-color: var(--border-2); }
+:root[data-skin="terminal"] .side-top .logo .mark { filter: none; }
+:root[data-skin="terminal"] .chat-empty .big::after { content: '▌'; color: var(--claude); margin-left: 2px; animation: cc-blink 1s steps(1) infinite; }
+@keyframes cc-blink { 50% { opacity: 0; } }
+:root[data-skin="terminal"] .composer textarea { caret-shape: block; caret-color: var(--fg); }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; }

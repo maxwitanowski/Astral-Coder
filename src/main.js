@@ -172,7 +172,6 @@ function applyTheme() {
   document.documentElement.dataset.font = state.ui.font || 'system';
   // the skin only restyles: same layout, same controls, different clothes
   document.documentElement.dataset.skin = state.ui.skin || 'default';
-  document.documentElement.dataset.phosphor = state.ui.phosphor || 'green';
 }
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
@@ -589,8 +588,7 @@ function renderSettings() {
     body = `<div class="sgroup"><h3>Appearance</h3>
         <div class="srow"><div><div class="sl">Theme</div><div class="ss">Follow the system, or pick one.</div></div>${seg('theme', [['system', 'System', 'monitor'], ['light', 'Light', 'sun'], ['dark', 'Dark', 'moon']])}</div>
         <div class="srow"><div><div class="sl">Font</div><div class="ss">Interface text. Code always uses the monospace font.</div></div>${seg('font', [['system', 'System'], ['inter', 'Inter'], ['mono', 'Mono']])}</div>
-        <div class="srow"><div><div class="sl">Skin</div><div class="ss">Terminal dresses the whole app as a phosphor CRT: monospace everywhere, square corners, scanlines, a blinking cursor. Nothing moves; only the styling changes.</div></div>${seg('skin', [['default', 'Default'], ['terminal', 'Terminal', 'terminal']])}</div>
-        ${(state.ui.skin || 'default') === 'terminal' ? `<div class="srow"><div><div class="sl">Phosphor</div><div class="ss">The glow colour of the terminal skin.</div></div>${seg('phosphor', [['green', 'Green'], ['amber', 'Amber'], ['ice', 'Ice'], ['plasma', 'Plasma']])}</div>` : ''}</div>
+        <div class="srow"><div><div class="sl">Skin</div><div class="ss">Terminal makes the whole app look like Claude Code running in a terminal: monospace, terminal black, ⏺ tool rows, a &gt; prompt box. Nothing moves; only the styling changes.</div></div>${seg('skin', [['default', 'Default'], ['terminal', 'Terminal', 'terminal']])}</div></div>
       <div class="sgroup"><h3>Agents</h3>
         <div class="srow"><div><div class="sl">Follow-up behavior</div><div class="ss">What Enter does while the agent is working. Ctrl+Enter does the opposite.</div></div>${seg('followUp', [['queue', 'Queue'], ['steer', 'Interrupt']])}</div>
         ${tog('claudeHome', 'Start Claude Code in your home folder', `Claude keeps its auto-memory per start folder. On, Claude starts in <code>${esc(PATHS.home)}</code> and the workspace is added with --add-dir, so it sees the memory you built up there. Off, it starts in the workspace like a normal <code>claude</code> in that folder. Applies to newly started sessions.`)}
