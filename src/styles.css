@@ -141,6 +141,66 @@
 :root[data-skin="terminal"] .preview, :root[data-skin="terminal"] .preview-head { background: var(--bg); border-color: var(--border); }
 :root[data-skin="terminal"] .empty, :root[data-skin="terminal"] .page { background: var(--bg); }
 :root[data-skin="terminal"] .gutter:hover::after, :root[data-skin="terminal"] #app.resizing .gutter::after { background: var(--fg-3); }
+/* -- refinements matched against Claude Code in Windows Terminal -- */
+:root[data-skin="terminal"] { --fg: #d6d6d6; --fg-2: #b0b0b0; --fg-3: #7d7d7d; --fg-4: #4a4a4a; --border: #232323; --border-2: #3d3d3d; --info: #5d9cf6; }
+:root[data-skin="terminal"] body { font-size: 13px; }
+:root[data-skin="terminal"] .chat { padding-top: 14px; } :root[data-skin="terminal"] .msg { font-size: 14px; line-height: 1.7; padding-top: 6px; padding-bottom: 6px; }
+:root[data-skin="terminal"] .msg .body, :root[data-skin="terminal"] .md p, :root[data-skin="terminal"] .md li { color: #d6d6d6; } :root[data-skin="terminal"] .md strong { color: #ffffff; } :root[data-skin="terminal"] .md h1, :root[data-skin="terminal"] .md h2, :root[data-skin="terminal"] .md h3 { color: #ffffff; font-weight: 700; }
+:root[data-skin="terminal"] .md a, :root[data-skin="terminal"] a { color: var(--info); } :root[data-skin="terminal"] .md code { color: #d6d6d6; }
+/* replies: a white ● bullet, like Claude Code's transcript */
+:root[data-skin="terminal"] .msg.assistant .body > .md:first-child::before { content: '●'; color: #ffffff; top: 2px; }
+/* prompts: > text on a full-width gray band */
+:root[data-skin="terminal"] .msg.user { padding-top: 10px; padding-bottom: 10px; }
+:root[data-skin="terminal"] .msg.user .bubble { background: #1c1c1c; padding: 8px 12px 8px 30px; font-weight: 400; color: #e6e6e6; }
+:root[data-skin="terminal"] .msg.user .bubble::before { left: 12px; top: 8px; color: #b0b0b0; }
+/* finished tool calls collapse visually into a dim "Ran N tool calls" line with dim rows under it; a running call is a bright ● */
+:root[data-skin="terminal"] .steps { display: flex; flex-direction: column; counter-reset: tools; margin: 2px 0 4px; }
+:root[data-skin="terminal"] .steps::after { order: -1; content: 'Ran ' counter(tools) ' tool call'; color: var(--fg-3); padding-left: 20px; font-size: 13px; }
+:root[data-skin="terminal"] .steps:has(.tool:nth-child(2))::after { content: 'Ran ' counter(tools) ' tool calls'; }
+:root[data-skin="terminal"] .steps:has(.tool.pending)::after { content: 'Running…'; color: var(--accent); }
+:root[data-skin="terminal"] .tool { counter-increment: tools; font-size: 12.5px; line-height: 1.5; }
+:root[data-skin="terminal"] .tool .th { padding: 1px 0 1px 20px; opacity: 1; }
+:root[data-skin="terminal"] .tool .th::before { content: '⎿'; color: var(--fg-4); width: 15px; }
+:root[data-skin="terminal"] .tool.done .th::before, :root[data-skin="terminal"] .tool.error .th::before { color: var(--fg-4); }
+:root[data-skin="terminal"] .tool.pending .th::before { content: '●'; color: var(--accent); }
+:root[data-skin="terminal"] .tool .th .verb { color: var(--fg-3); } :root[data-skin="terminal"] .tool.pending .th .verb { color: var(--fg); }
+:root[data-skin="terminal"] .tool .th .target { color: var(--fg-4); } :root[data-skin="terminal"] .tool.pending .th .target { color: var(--fg-2); }
+:root[data-skin="terminal"] .tool .th .err { color: var(--bad); }
+:root[data-skin="terminal"] .tool .out { margin-left: 34px; padding-left: 12px; border-left: 1px solid var(--border); font-size: 12px; } :root[data-skin="terminal"] .tool .out::before { content: none; }
+:root[data-skin="terminal"] .todos-card { border: 0; padding-left: 20px; }
+/* footer: ✳ Worked for 73.1s */
+:root[data-skin="terminal"] .turn { padding-left: 2px; color: var(--fg-3); font-size: 13px; } :root[data-skin="terminal"] .turn .t::before { content: 'Worked for '; color: var(--fg-3); }
+:root[data-skin="terminal"] .turn::before { content: '✳'; color: var(--accent); margin-right: 8px; } :root[data-skin="terminal"] .turn .nochange { color: var(--fg-4); }
+:root[data-skin="terminal"] .working { font-size: 13px; } :root[data-skin="terminal"] .working .wk .ph { color: var(--fg-2); } :root[data-skin="terminal"] .working .wk .el { color: var(--fg-4); }
+:root[data-skin="terminal"] .msg.assistant .who .wk.glyph { color: var(--accent); }
+:root[data-skin="terminal"] .think summary::before { content: '✻ '; color: var(--fg-4); }
+/* the prompt: a > between two full-width rules, status text centred and dim below it */
+:root[data-skin="terminal"] .composer-wrap { padding: 0 16px 10px; } :root[data-skin="terminal"] .composer { border: 0; border-top: 1px solid #5a5a5a; border-bottom: 1px solid #5a5a5a; border-radius: 0; padding: 6px 4px 2px 6px; max-width: none; }
+:root[data-skin="terminal"] .composer:focus-within { border-color: #8a8a8a; }
+:root[data-skin="terminal"] .composer textarea { font-size: 14px; line-height: 22px; padding: 3px 0 3px 20px; background-position: 0 8px; }
+:root[data-skin="terminal"] .composer .row { border-top: 0; margin-top: 0; padding-top: 2px; }
+:root[data-skin="terminal"] .composer .chip-btn { font-size: 12px; color: var(--fg-4); } :root[data-skin="terminal"] .composer .chip-btn:hover { color: var(--fg-2); }
+:root[data-skin="terminal"] .composer .hint { text-align: center; }
+:root[data-skin="terminal"] .composer .send { border: 0; color: var(--fg-4); } :root[data-skin="terminal"] .composer .send.ready { color: var(--fg); }
+:root[data-skin="terminal"] .queue { border: 0; padding-left: 20px; color: var(--fg-3); } :root[data-skin="terminal"] .queue .qh { color: var(--fg-4); }
+/* chrome: quieter. ❯ marks the selection instead of reverse video, rules are near black */
+:root[data-skin="terminal"] .ws-row.is-active, :root[data-skin="terminal"] .snav button.is-active, :root[data-skin="terminal"] .tab.is-active, :root[data-skin="terminal"] .dtab.is-active, :root[data-skin="terminal"] .menu button.is-hi { background: transparent; color: var(--fg); }
+:root[data-skin="terminal"] .ws-row.is-active *, :root[data-skin="terminal"] .snav button.is-active *, :root[data-skin="terminal"] .tab.is-active *, :root[data-skin="terminal"] .dtab.is-active * { color: var(--fg) !important; }
+:root[data-skin="terminal"] .ws-row.is-active .stripe { background: var(--accent) !important; }
+:root[data-skin="terminal"] .ws-row.is-active .t::before, :root[data-skin="terminal"] .snav button.is-active::before, :root[data-skin="terminal"] .tab.is-active .t::before { content: '❯ '; color: var(--accent) !important; }
+:root[data-skin="terminal"] .menu button.is-hi { background: var(--hover); }
+:root[data-skin="terminal"] .ws-row .s, :root[data-skin="terminal"] .repo-row .base, :root[data-skin="terminal"] .side-links button, :root[data-skin="terminal"] .hist-count { color: var(--fg-4); }
+:root[data-skin="terminal"] .side-top .logo { color: var(--fg-2); } :root[data-skin="terminal"] .side-top .logo span::after { color: var(--fg-3); }
+:root[data-skin="terminal"] .topbar .title, :root[data-skin="terminal"] .tab .t { color: var(--fg-2); }
+:root[data-skin="terminal"] .panel-tabs, :root[data-skin="terminal"] .topbar, :root[data-skin="terminal"] .tabs-row, :root[data-skin="terminal"] .side-top { border-bottom-color: var(--border); }
+:root[data-skin="terminal"] .panel .kv .k, :root[data-skin="terminal"] .env-list div { color: var(--fg-3); }
+:root[data-skin="terminal"] .btn::before, :root[data-skin="terminal"] .btn::after, :root[data-skin="terminal"] .chip-btn::before, :root[data-skin="terminal"] .chip-btn::after { color: var(--fg-4); }
+:root[data-skin="terminal"] .btn { color: var(--fg-3); } :root[data-skin="terminal"] .btn:hover { color: var(--fg); } :root[data-skin="terminal"] .btn.primary { color: var(--accent); font-weight: 400; }
+:root[data-skin="terminal"] .seg { border-color: var(--border-2); } :root[data-skin="terminal"] .seg button.is-on { background: transparent; color: var(--fg); text-decoration: underline; text-underline-offset: 3px; } :root[data-skin="terminal"] .seg button.is-on .i-sm { color: var(--fg); }
+:root[data-skin="terminal"] .sec-h, :root[data-skin="terminal"] .sgroup h3 { color: var(--fg-4); } :root[data-skin="terminal"] .sec-h > span:not(.grow):not(.n)::before, :root[data-skin="terminal"] .sgroup h3::before { content: '─ '; }
+:root[data-skin="terminal"] .srow { border-bottom-color: var(--border); }
+:root[data-skin="terminal"] .avatar { border-color: var(--border-2); color: var(--fg-3); }
+:root[data-skin="terminal"] .att, :root[data-skin="terminal"] .stats, :root[data-skin="terminal"] .base, :root[data-skin="terminal"] .local, :root[data-skin="terminal"] .subn, :root[data-skin="terminal"] kbd { border-color: var(--border-2); color: var(--fg-3); }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; }

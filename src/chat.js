@@ -341,7 +341,16 @@ export function renderChat(force = false) {
   const parts = [];
   let html = '';
   const flush = () => { if (html) { parts.push(html); html = ''; } };
-  st.msgs.forEach((m, i) => {
+  // consecutive replies that are nothing but tool calls (the stream sends one
+  // message per call) are drawn as one group, the way the CLI shows them
+  const rows = [];
+  for (const m of st.msgs) {
+    const toolOnly = m.kind === 'assistant' && m.blocks.filter(Boolean).length && m.blocks.filter(Boolean).every((b) => b.type === 'tool_use');
+    const prev = rows[rows.length - 1];
+    if (toolOnly && prev && prev.merged) prev.blocks = prev.blocks.concat(m.blocks.filter(Boolean));
+    else rows.push(toolOnly ? { kind: 'assistant', id: m.id, merged: true, blocks: m.blocks.filter(Boolean) } : m);
+  }
+  rows.forEach((m, i) => {
     flush();
     if (m.kind === 'user') { const atts = (m.attachments || []).filter((a) => a.kind !== 'image'), imgs = (m.attachments || []).filter((a) => a.kind === 'image'); html += `<div class="msg user"><div class="bubble">${imgs.length ? `<div class="imgs">${imgs.map((a) => `<img src="${a.dataUrl}" alt="${esc(a.name)}" title="${esc(`${a.name} · ${a.w}×${a.h}`)}" data-img-zoom="1">`).join('')}</div>` : ''}${atts.length ? `<div class="atts">${atts.map((a) => `<span class="att">${ic(a.kind === 'comment' ? 'message' : 'paperclip', 'i-sm')}${esc(a.kind === 'comment' ? `${basename(a.file)}${a.line ? ':' + a.line : ''}` : a.kind === 'file' ? basename(a.path) : 'note')}</span>`).join('')}</div>` : ''}${esc(m.text)}</div></div>`; }
     else if (m.kind === 'sys') html += `<div class="sysline ${m.err ? 'err' : ''}">${esc(m.text)}</div>`;
@@ -351,7 +360,7 @@ export function renderChat(force = false) {
     else if (m.kind === 'assistant') {
       let body = '';
       const blocks = m.blocks.filter(Boolean);
-      const isLast = i === st.msgs.length - 1;
+      const isLast = i === rows.length - 1;
       for (let j = 0; j < blocks.length; j++) {
         const b = blocks[j];
         const streaming = st.working && isLast && j === blocks.length - 1;
