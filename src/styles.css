@@ -201,6 +201,41 @@
 :root[data-skin="terminal"] .srow { border-bottom-color: var(--border); }
 :root[data-skin="terminal"] .avatar { border-color: var(--border-2); color: var(--fg-3); }
 :root[data-skin="terminal"] .att, :root[data-skin="terminal"] .stats, :root[data-skin="terminal"] .base, :root[data-skin="terminal"] .local, :root[data-skin="terminal"] .subn, :root[data-skin="terminal"] kbd { border-color: var(--border-2); color: var(--fg-3); }
+/* -- pure black, square everything, white rules -- */
+:root[data-skin="terminal"] { --bg: #000000; --bg-2: #000000; --bg-3: #000000; --bg-4: #161616; --sidebar: #000000; --panel: #000000; --card: #000000; --border: #6e6e6e; --border-2: #a8a8a8; --ring: #d6d6d6; --hover: rgba(255,255,255,.09); --selected: rgba(255,255,255,.14); }
+:root[data-skin="terminal"] *, :root[data-skin="terminal"] *::before, :root[data-skin="terminal"] *::after { border-radius: 0 !important; }
+:root[data-skin="terminal"] .sidebar { border-right: 1px solid #8a8a8a; } :root[data-skin="terminal"] .panel { border-left: 1px solid #8a8a8a; }
+:root[data-skin="terminal"] .topbar, :root[data-skin="terminal"] .tabs-row, :root[data-skin="terminal"] .side-top, :root[data-skin="terminal"] .panel-tabs, :root[data-skin="terminal"] .drawer-bar { border-bottom: 1px solid #8a8a8a; border-top: 0; } :root[data-skin="terminal"] .drawer-bar { border-top: 1px solid #8a8a8a; border-bottom: 1px solid #3a3a3a; }
+:root[data-skin="terminal"] .side-top, :root[data-skin="terminal"] .topbar { height: 44px; }
+:root[data-skin="terminal"] .sec, :root[data-skin="terminal"] .sgroup { border-bottom: 1px solid #3a3a3a; padding-bottom: 10px; margin-bottom: 10px; }
+:root[data-skin="terminal"] .sec-h, :root[data-skin="terminal"] .sgroup h3 { color: var(--fg-2); } :root[data-skin="terminal"] .sec-h > span:not(.grow):not(.n)::before, :root[data-skin="terminal"] .sgroup h3::before { content: '── '; color: #a8a8a8; }
+:root[data-skin="terminal"] .srow { border-bottom: 1px solid #2a2a2a; }
+:root[data-skin="terminal"] .repo-row { border-bottom: 1px solid #2a2a2a; }
+:root[data-skin="terminal"] .composer { border-top: 1px solid #d6d6d6; border-bottom: 1px solid #d6d6d6; } :root[data-skin="terminal"] .composer:focus-within { border-color: #ffffff; }
+:root[data-skin="terminal"] .composer textarea { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='14'%3E%3Ctext x='0' y='11' font-family='Cascadia Mono,Consolas,monospace' font-size='13' fill='%23ffffff'%3E%3E%3C/text%3E%3C/svg%3E"); }
+:root[data-skin="terminal"] .msg.user .bubble { background: #0f0f0f; border-left: 2px solid #d6d6d6; }
+:root[data-skin="terminal"] .tool .out { border-left: 1px solid #6e6e6e; }
+:root[data-skin="terminal"] .md pre { border-left: 2px solid #8a8a8a; } :root[data-skin="terminal"] .md blockquote { border-left: 2px solid #8a8a8a; }
+:root[data-skin="terminal"] .md table th, :root[data-skin="terminal"] .md table td { border: 1px solid #6e6e6e; }
+:root[data-skin="terminal"] .think > div { border-left: 1px solid #6e6e6e; }
+:root[data-skin="terminal"] .toggle { width: 34px; border: 1px solid #a8a8a8; background: #000; } :root[data-skin="terminal"] .toggle span { background: #a8a8a8; } :root[data-skin="terminal"] .toggle.is-on { border-color: #ffffff; } :root[data-skin="terminal"] .toggle.is-on span { background: #ffffff; }
+:root[data-skin="terminal"] .seg { border: 1px solid #a8a8a8; } :root[data-skin="terminal"] .seg button + button { border-left: 1px solid #6e6e6e; } :root[data-skin="terminal"] .seg button.is-on { background: #ffffff; color: #000000; text-decoration: none; } :root[data-skin="terminal"] .seg button.is-on .i-sm { color: #000000; }
+:root[data-skin="terminal"] input, :root[data-skin="terminal"] textarea:not(.composer textarea), :root[data-skin="terminal"] select, :root[data-skin="terminal"] .q .qt { border: 1px solid #8a8a8a; }
+:root[data-skin="terminal"] .modal, :root[data-skin="terminal"] .menu { border: 1px solid #d6d6d6; } :root[data-skin="terminal"] .modal h3 { border-bottom: 1px solid #3a3a3a; padding-bottom: 8px; }
+:root[data-skin="terminal"] .toast { border: 1px solid #d6d6d6; }
+:root[data-skin="terminal"] .perm { border: 1px solid #b1b9f9; } :root[data-skin="terminal"] .plugin, :root[data-skin="terminal"] .repo-card, :root[data-skin="terminal"] .todos-card, :root[data-skin="terminal"] .dcomment { border: 1px solid #6e6e6e; }
+:root[data-skin="terminal"] .avatar { border: 1px solid #a8a8a8; color: #d6d6d6; } :root[data-skin="terminal"] .plugin .logo { border: 1px solid #6e6e6e; }
+:root[data-skin="terminal"] .att, :root[data-skin="terminal"] .stats, :root[data-skin="terminal"] .base, :root[data-skin="terminal"] .local, :root[data-skin="terminal"] .subn, :root[data-skin="terminal"] kbd, :root[data-skin="terminal"] .q .n, :root[data-skin="terminal"] .plugin .state { border: 1px solid #8a8a8a; color: var(--fg-2); }
+:root[data-skin="terminal"] .icon-btn, :root[data-skin="terminal"] .composer .send { border: 0; } :root[data-skin="terminal"] .composer .send.ready { border: 1px solid #ffffff; }
+:root[data-skin="terminal"] ::-webkit-scrollbar-thumb { background: #8a8a8a; } :root[data-skin="terminal"] * { scrollbar-color: #8a8a8a transparent; }
+:root[data-skin="terminal"] .ws-row.is-active .stripe { background: #ffffff !important; } :root[data-skin="terminal"] .ws-row .stripe { box-shadow: none; }
+:root[data-skin="terminal"] .tab.is-active { border-bottom: 1px solid #ffffff; margin-bottom: -1px; }
+:root[data-skin="terminal"] .panel-tab.is-active, :root[data-skin="terminal"] .vtab.is-active { text-decoration: none; border-bottom: 1px solid #ffffff; }
+:root[data-skin="terminal"] .msg img, :root[data-skin="terminal"] .composer .att.img img, :root[data-skin="terminal"] .img-zoom img { border: 1px solid #8a8a8a; }
+:root[data-skin="terminal"] .gutter::after { left: 3px; } :root[data-skin="terminal"] .gutter:hover::after, :root[data-skin="terminal"] #app.resizing .gutter::after { background: #ffffff; }
+:root[data-skin="terminal"] .dtab.is-active { border-bottom: 1px solid #ffffff; }
+:root[data-skin="terminal"] .dl { border-bottom: 1px dotted #2a2a2a; }
+:root[data-skin="terminal"] .tree-row.is-active { background: transparent; color: #ffffff; }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; }
