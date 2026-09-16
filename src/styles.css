@@ -29,66 +29,118 @@
 :root[data-font="inter"] { --sans: Inter, "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif; }
 :root[data-font="mono"] { --sans: var(--mono); }
 
-/* ---------- Terminal skin: Astral dressed like Claude Code running in a terminal.
-   Same layout, same controls. Terminal black, monospace, Claude's orange and the
-   lavender it uses for dialogs, ⏺ and ⎿ markers, a > prompt box. Nothing glows. */
+/* ---------- Terminal skin: Astral as if it were drawn inside a terminal window running
+   Claude Code. Black, monospace, nothing filled: text, thin single lines, reverse-video
+   selection, ⏺ / ⎿ transcript markers, a ╭ prompt box. Same layout, same controls. */
 :root[data-skin="terminal"] {
-  --bg: #0d0d0d; --bg-2: #121212; --bg-3: #1a1a1a; --bg-4: #242424;
-  --sidebar: #0a0a0a; --panel: #0f0f0f; --card: #151515;
-  --fg: #e6e4e1; --fg-2: #b5b3ae; --fg-3: #8c8a86; --fg-4: #5a5956;
-  --border: #262626; --border-2: #363636; --ring: #d97757;
-  --primary: #d97757; --primary-fg: #0d0d0d;
-  --accent: #d97757; --accent-bg: rgba(217,119,87,.16);
-  --ok: #4ebc65; --ok-bg: rgba(78,188,101,.14); --warn: #ffc107; --warn-bg: rgba(255,193,7,.12); --bad: #ff6b6b; --bad-bg: rgba(255,107,107,.14); --info: #b1b9f9; --info-bg: rgba(177,185,249,.14); --purple: #af87ff;
-  --diff-add-bg: #1c3a22; --diff-add-fg: #7ee787; --diff-add-g: #225c2b; --diff-del-bg: #3d1f1f; --diff-del-fg: #ff9a9a; --diff-del-g: #7a2929; --diff-hunk: #1a1f33;
-  --hover: rgba(255,255,255,.06); --selected: rgba(177,185,249,.14); --shadow: 0 0 0 1px #363636;
-  --radius: 4px; --radius-lg: 6px;
+  --bg: #0c0c0c; --bg-2: #0c0c0c; --bg-3: #0c0c0c; --bg-4: #1a1a1a;
+  --sidebar: #0c0c0c; --panel: #0c0c0c; --card: #0c0c0c;
+  --fg: #cccccc; --fg-2: #a6a6a6; --fg-3: #767676; --fg-4: #4d4d4d;
+  --border: #3a3a3a; --border-2: #4a4a4a; --ring: #767676;
+  --primary: #0c0c0c; --primary-fg: #d97757;
+  --accent: #d97757; --accent-bg: transparent;
+  --ok: #4ebc65; --ok-bg: transparent; --warn: #ffc107; --warn-bg: transparent; --bad: #ff6b6b; --bad-bg: transparent; --info: #b1b9f9; --info-bg: transparent; --purple: #af87ff;
+  --diff-add-bg: #12310f; --diff-add-fg: #7ee787; --diff-add-g: #1f4a1a; --diff-del-bg: #3a1212; --diff-del-fg: #ff9a9a; --diff-del-g: #5a1e1e; --diff-hunk: #101528;
+  --hover: rgba(255,255,255,.07); --selected: rgba(255,255,255,.12); --shadow: none;
+  --radius: 0px; --radius-lg: 0px;
   --sans: var(--mono);
   --claude: #d97757;
 }
-:root[data-skin="terminal"] body { font-size: 12.5px; }
-:root[data-skin="terminal"] ::selection { background: rgba(177,185,249,.35); }
-:root[data-skin="terminal"] * { scrollbar-color: #363636 transparent; }
-:root[data-skin="terminal"] ::-webkit-scrollbar { width: 8px; height: 8px; } :root[data-skin="terminal"] ::-webkit-scrollbar-thumb { background: #363636; border: 2px solid transparent; background-clip: content-box; }
-/* the prompt box: a thin rounded frame with a > like Claude Code's input */
-:root[data-skin="terminal"] .composer { border: 1px solid #4a4a4a; border-radius: 6px; box-shadow: none; background: var(--bg); }
-:root[data-skin="terminal"] .composer:focus-within { border-color: #6a6a6a; box-shadow: none; }
-:root[data-skin="terminal"] .composer textarea { padding-left: 18px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='14'%3E%3Ctext x='0' y='11' font-family='Cascadia Mono,Consolas,monospace' font-size='13' fill='%23d97757'%3E%3E%3C/text%3E%3C/svg%3E") no-repeat 0 7px; }
-:root[data-skin="terminal"] .composer .hint { color: var(--fg-4); }
-:root[data-skin="terminal"] .composer .send { border-radius: 4px; }
-/* messages: user prompts as > lines in a gray box, tool calls as ⏺ rows with ⎿ results, plain turn footers */
-:root[data-skin="terminal"] .msg.user .bubble { background: #1e1e1e; border-radius: 4px; margin-left: 0; padding: 8px 12px 8px 26px; position: relative; }
-:root[data-skin="terminal"] .msg.user .bubble::before { content: '>'; position: absolute; left: 12px; top: 8px; color: var(--fg-3); }
+:root[data-skin="terminal"] body { font-size: 12.5px; line-height: 1.45; }
+:root[data-skin="terminal"] ::selection { background: #cccccc; color: #0c0c0c; }
+:root[data-skin="terminal"] * { scrollbar-color: #3a3a3a transparent; box-shadow: none !important; }
+:root[data-skin="terminal"] ::-webkit-scrollbar { width: 6px; height: 6px; } :root[data-skin="terminal"] ::-webkit-scrollbar-thumb { background: #3a3a3a; }
+:root[data-skin="terminal"] img:not(.mark):not(.msg img) { filter: grayscale(.4) contrast(1.05); }
+/* frame lines only: the three columns and the top rows are separated by single rules, nothing is filled */
+:root[data-skin="terminal"] .sidebar { border-right: 1px solid var(--border); } :root[data-skin="terminal"] .panel { border-left: 1px solid var(--border); }
+:root[data-skin="terminal"] .topbar, :root[data-skin="terminal"] .tabs-row, :root[data-skin="terminal"] .side-top, :root[data-skin="terminal"] .panel-tabs { border-bottom: 1px solid var(--border); background: var(--bg); }
+:root[data-skin="terminal"] .side-top .logo span::after { content: '▮'; margin-left: 3px; animation: cc-blink 1s steps(1) infinite; }
+@keyframes cc-blink { 50% { opacity: 0; } }
+/* buttons are words. [ ] around them, orange when primary, reverse video when pressed. Icons inside text buttons are dropped. */
+:root[data-skin="terminal"] .btn, :root[data-skin="terminal"] .chip-btn, :root[data-skin="terminal"] .tab-add, :root[data-skin="terminal"] .vtab, :root[data-skin="terminal"] .add-repo-row, :root[data-skin="terminal"] .side-links button, :root[data-skin="terminal"] .att-clear { background: transparent !important; border: 0 !important; color: var(--fg-2); padding-left: 4px; padding-right: 4px; }
+:root[data-skin="terminal"] .btn .i, :root[data-skin="terminal"] .btn .i-sm, :root[data-skin="terminal"] .chip-btn .i:not(:only-child), :root[data-skin="terminal"] .chip-btn .i-sm:not(:only-child), :root[data-skin="terminal"] .vtab .i-sm, :root[data-skin="terminal"] .tab-add .i-sm { display: none; }
+:root[data-skin="terminal"] .btn::before, :root[data-skin="terminal"] .chip-btn::before { content: '['; color: var(--fg-4); margin-right: 5px; } :root[data-skin="terminal"] .btn::after, :root[data-skin="terminal"] .chip-btn::after { content: ']'; color: var(--fg-4); margin-left: 5px; }
+:root[data-skin="terminal"] .btn.primary { color: var(--accent); font-weight: 700; } :root[data-skin="terminal"] .btn.danger { color: var(--bad); }
+:root[data-skin="terminal"] .btn:hover, :root[data-skin="terminal"] .chip-btn:hover, :root[data-skin="terminal"] .vtab:hover, :root[data-skin="terminal"] .tab-add:hover { background: var(--hover) !important; color: var(--fg); }
+:root[data-skin="terminal"] .btn:active { background: var(--fg) !important; color: var(--bg); }
+:root[data-skin="terminal"] .btn kbd, :root[data-skin="terminal"] .btn .kbd { display: none; }
+:root[data-skin="terminal"] .icon-btn { border-radius: 0; } :root[data-skin="terminal"] .icon-btn:hover { background: var(--hover); }
+:root[data-skin="terminal"] .seg { background: transparent; border: 1px solid var(--border); padding: 0; gap: 0; border-radius: 0; }
+:root[data-skin="terminal"] .seg button { border-radius: 0; color: var(--fg-3); } :root[data-skin="terminal"] .seg button.is-on { background: var(--fg); color: var(--bg); box-shadow: none; } :root[data-skin="terminal"] .seg button.is-on .i-sm { color: var(--bg); }
+:root[data-skin="terminal"] .toggle { background: transparent; border: 1px solid var(--border-2); } :root[data-skin="terminal"] .toggle.is-on { background: transparent; border-color: var(--ok); } :root[data-skin="terminal"] .toggle.is-on span { background: var(--ok); } :root[data-skin="terminal"] .toggle span { background: var(--fg-3); }
+:root[data-skin="terminal"] input, :root[data-skin="terminal"] textarea, :root[data-skin="terminal"] select, :root[data-skin="terminal"] .q .qt { background: transparent; border: 1px solid var(--border); border-radius: 0; color: var(--fg); }
+:root[data-skin="terminal"] input:focus, :root[data-skin="terminal"] textarea:focus { border-color: var(--fg-3); outline: none; }
+/* lists: the chosen row is marked with ❯ and reverse video, like a picker */
+:root[data-skin="terminal"] .ws-row, :root[data-skin="terminal"] .repo-row, :root[data-skin="terminal"] .tab, :root[data-skin="terminal"] .snav button, :root[data-skin="terminal"] .dtab, :root[data-skin="terminal"] .panel-tab, :root[data-skin="terminal"] .menu button, :root[data-skin="terminal"] .tree-row, :root[data-skin="terminal"] .dl { border-radius: 0; }
+:root[data-skin="terminal"] .ws-row.is-active, :root[data-skin="terminal"] .snav button.is-active, :root[data-skin="terminal"] .tab.is-active, :root[data-skin="terminal"] .dtab.is-active, :root[data-skin="terminal"] .menu button.is-hi { background: var(--fg); color: var(--bg); }
+:root[data-skin="terminal"] .ws-row.is-active *, :root[data-skin="terminal"] .snav button.is-active *, :root[data-skin="terminal"] .tab.is-active *, :root[data-skin="terminal"] .dtab.is-active * { color: var(--bg) !important; }
+:root[data-skin="terminal"] .ws-row.is-active .t::before, :root[data-skin="terminal"] .snav button.is-active::before { content: '❯ '; }
+:root[data-skin="terminal"] .ws-row .stripe { width: 2px; } :root[data-skin="terminal"] .ws-row.is-active .stripe { background: var(--bg) !important; }
+:root[data-skin="terminal"] .tab.is-active .close { opacity: 1; }
+:root[data-skin="terminal"] .panel-tab.is-active { background: transparent; color: var(--fg); text-decoration: underline; text-underline-offset: 4px; }
+:root[data-skin="terminal"] .vtab.is-active { color: var(--fg); text-decoration: underline; text-underline-offset: 4px; }
+:root[data-skin="terminal"] .avatar { background: transparent; border: 1px solid var(--border); color: var(--fg-2); border-radius: 0; }
+:root[data-skin="terminal"] .sec-h { color: var(--fg-3); } :root[data-skin="terminal"] .sec-h > span:not(.grow):not(.n)::before { content: '── '; color: var(--fg-4); }
+:root[data-skin="terminal"] .sec-h .i-sm { display: none; }
+:root[data-skin="terminal"] .sgroup h3 { color: var(--fg-3); font-weight: 400; } :root[data-skin="terminal"] .sgroup h3::before { content: '── '; color: var(--fg-4); }
+:root[data-skin="terminal"] .srow { border-bottom: 1px dotted var(--border); }
+:root[data-skin="terminal"] .plugin, :root[data-skin="terminal"] .repo-card, :root[data-skin="terminal"] .todos-card, :root[data-skin="terminal"] .perm, :root[data-skin="terminal"] .dcomment { background: transparent; border: 1px solid var(--border); border-radius: 0; }
+:root[data-skin="terminal"] .plugin .logo { background: transparent; border: 1px solid var(--border); border-radius: 0; }
+:root[data-skin="terminal"] .plugin .state { border-color: var(--border); border-radius: 0; }
+:root[data-skin="terminal"] .att, :root[data-skin="terminal"] .msg.user .att, :root[data-skin="terminal"] .stats, :root[data-skin="terminal"] .base, :root[data-skin="terminal"] .local, :root[data-skin="terminal"] .subn { background: transparent; border: 1px solid var(--border); border-radius: 0; }
+:root[data-skin="terminal"] kbd { background: transparent; border: 1px solid var(--border); border-bottom-width: 1px; border-radius: 0; }
+:root[data-skin="terminal"] code { background: transparent; border: 0; padding: 0; color: var(--fg); }
+:root[data-skin="terminal"] .md pre { background: transparent; border: 0; border-left: 2px solid var(--border); border-radius: 0; padding: 4px 12px; }
+:root[data-skin="terminal"] .md blockquote { border-left: 2px solid var(--border-2); }
+:root[data-skin="terminal"] .modal, :root[data-skin="terminal"] .menu { background: var(--bg); border: 1px solid var(--border-2); border-radius: 6px; }
+:root[data-skin="terminal"] .overlay { background: rgba(0,0,0,.6); }
+:root[data-skin="terminal"] .toast { background: var(--bg); color: var(--fg); border: 1px solid var(--border-2); border-radius: 0; } :root[data-skin="terminal"] .toast::before { content: '⏺ '; color: var(--accent); } :root[data-skin="terminal"] .toast.error { color: var(--bad); border-color: var(--bad); }
+/* the transcript: > prompts, ⏺ for replies and tool calls, ⎿ for their output, dim footers */
+:root[data-skin="terminal"] .msg.user .bubble { background: transparent; border: 0; border-radius: 0; margin-left: 0; padding: 4px 0 4px 20px; position: relative; color: var(--fg); font-weight: 700; }
+:root[data-skin="terminal"] .msg.user .bubble::before { content: '>'; position: absolute; left: 4px; top: 4px; color: var(--fg-2); font-weight: 400; }
+:root[data-skin="terminal"] .msg.assistant .who .ag { visibility: hidden; }
+:root[data-skin="terminal"] .msg.assistant .body > .md:first-child { position: relative; padding-left: 20px; } :root[data-skin="terminal"] .msg.assistant .body > .md:first-child::before { content: '⏺'; position: absolute; left: 2px; top: 1px; color: var(--accent); }
+:root[data-skin="terminal"] .msg .body { color: var(--fg); }
+:root[data-skin="terminal"] .tool { border: 0; background: transparent; }
 :root[data-skin="terminal"] .tool .th .i, :root[data-skin="terminal"] .tool .th .i-sm { display: none; }
-:root[data-skin="terminal"] .btn.primary kbd, :root[data-skin="terminal"] .btn.primary .kbd { color: inherit; background: rgba(0,0,0,.22); border-color: transparent; }
 :root[data-skin="terminal"] .tool .th::before { content: '⏺'; color: var(--fg-2); width: 15px; flex: none; text-align: center; line-height: 1; }
-:root[data-skin="terminal"] .tool.done .th::before { color: var(--ok); } :root[data-skin="terminal"] .tool.error .th::before { color: var(--bad); } :root[data-skin="terminal"] .tool.pending .th::before { color: var(--claude); }
+:root[data-skin="terminal"] .tool.done .th::before { color: var(--ok); } :root[data-skin="terminal"] .tool.error .th::before { color: var(--bad); } :root[data-skin="terminal"] .tool.pending .th::before { color: var(--accent); }
+:root[data-skin="terminal"] .tool .th { padding-left: 2px; } :root[data-skin="terminal"] .tool .th:hover { background: transparent; }
 :root[data-skin="terminal"] .tool .th .verb { color: var(--fg); } :root[data-skin="terminal"] .tool .th .target { color: var(--fg-3); }
 :root[data-skin="terminal"] .tool .th .target::before { content: '('; } :root[data-skin="terminal"] .tool .th .target::after { content: ')'; }
-:root[data-skin="terminal"] .tool .out { border: 0; background: transparent; padding-left: 22px; position: relative; margin-left: 24px; }
-:root[data-skin="terminal"] .tool .out::before { content: '⎿'; position: absolute; left: 4px; top: 8px; color: var(--fg-4); }
-:root[data-skin="terminal"] .tool .sub-live { padding-left: 46px; }
-:root[data-skin="terminal"] .md pre { background: #121212; border-color: #2a2a2a; }
-:root[data-skin="terminal"] .turn { color: var(--fg-4); }
-:root[data-skin="terminal"] .think summary { color: var(--fg-3); font-style: italic; }
-:root[data-skin="terminal"] .perm { border: 1px solid #b1b9f9; border-radius: 6px; background: var(--bg); } :root[data-skin="terminal"] .perm .q b { color: #b1b9f9; }
-:root[data-skin="terminal"] .perm .btn.primary { background: #b1b9f9; color: #0d0d0d; }
+:root[data-skin="terminal"] .tool .th .chev { color: var(--fg-4); }
+:root[data-skin="terminal"] .tool .out { border: 0; background: transparent; padding: 2px 0 2px 22px; margin: 0 0 6px 22px; position: relative; color: var(--fg-3); }
+:root[data-skin="terminal"] .tool .out::before { content: '⎿'; position: absolute; left: 2px; top: 2px; color: var(--fg-4); }
+:root[data-skin="terminal"] .tool .out .cmd { color: var(--fg-2); }
+:root[data-skin="terminal"] .tool .sub-live { padding-left: 46px; color: var(--fg-3); }
+:root[data-skin="terminal"] .tool .sublog { border-color: var(--border); }
+:root[data-skin="terminal"] .think { border: 0; } :root[data-skin="terminal"] .think summary { color: var(--fg-3); font-style: italic; } :root[data-skin="terminal"] .think summary .i-sm { display: none; } :root[data-skin="terminal"] .think summary::before { content: '∗ '; color: var(--fg-4); }
+:root[data-skin="terminal"] .think > div { border-left: 2px solid var(--border); color: var(--fg-3); }
+:root[data-skin="terminal"] .working { color: var(--fg-3); } :root[data-skin="terminal"] .working .wk .ph { color: var(--accent); }
+:root[data-skin="terminal"] .turn { color: var(--fg-4); } :root[data-skin="terminal"] .turn .t .i-sm { display: none; } :root[data-skin="terminal"] .turn .t::before { content: '⎿ '; color: var(--fg-4); }
+:root[data-skin="terminal"] .turn-diff { border: 0; background: transparent; color: var(--fg-3); }
+:root[data-skin="terminal"] .queue { border-bottom: 1px dotted var(--border); } :root[data-skin="terminal"] .q .n { background: transparent; border: 1px solid var(--border); border-radius: 0; }
+:root[data-skin="terminal"] .perm { border-color: #b1b9f9; border-radius: 6px; } :root[data-skin="terminal"] .perm .q b, :root[data-skin="terminal"] .perm .q .i { color: #b1b9f9; }
+:root[data-skin="terminal"] .perm .btn.primary { color: #b1b9f9; }
 :root[data-skin="terminal"] .chip-btn.is-plan { color: #4a968c; }
-/* chrome: flat, thin rules, ❯ on the selected items like Claude Code's menus */
-:root[data-skin="terminal"] .btn { border: 1px solid var(--border-2); box-shadow: none; }
-:root[data-skin="terminal"] .btn.primary { border-color: var(--primary); }
-:root[data-skin="terminal"] .ws-row.is-active .t::before, :root[data-skin="terminal"] .tab.is-active .t::before, :root[data-skin="terminal"] .snav button.is-active::before, :root[data-skin="terminal"] .menu button.checked .lbl::before { content: '❯ '; color: var(--claude); }
-:root[data-skin="terminal"] .ws-row .stripe.working { background: var(--claude); }
-:root[data-skin="terminal"] .toast { border-radius: 4px; box-shadow: none; border: 1px solid var(--border-2); background: var(--bg-3); color: var(--fg); }
-:root[data-skin="terminal"] .toast.error { border-color: var(--bad); color: var(--bad); background: var(--bg-3); }
-:root[data-skin="terminal"] .modal, :root[data-skin="terminal"] .menu { border: 1px solid #4a4a4a; border-radius: 6px; box-shadow: 0 8px 30px rgba(0,0,0,.6); }
-:root[data-skin="terminal"] .sgroup h3 { color: var(--claude); }
-:root[data-skin="terminal"] .sec-h { color: var(--fg-2); }
-:root[data-skin="terminal"] kbd { background: transparent; border-color: var(--border-2); }
-:root[data-skin="terminal"] .side-top .logo .mark { filter: none; }
-:root[data-skin="terminal"] .chat-empty .big::after { content: '▌'; color: var(--claude); margin-left: 2px; animation: cc-blink 1s steps(1) infinite; }
-@keyframes cc-blink { 50% { opacity: 0; } }
-:root[data-skin="terminal"] .composer textarea { caret-shape: block; caret-color: var(--fg); }
+:root[data-skin="terminal"] .sysline { color: var(--fg-4); } :root[data-skin="terminal"] .sysline.err { color: var(--bad); }
+/* the prompt box: ╭ frame, > prompt, block caret, dim status row underneath */
+:root[data-skin="terminal"] .composer { border: 1px solid var(--border-2); border-radius: 6px; background: var(--bg); padding: 6px 10px 4px 12px; }
+:root[data-skin="terminal"] .composer:focus-within { border-color: #8a8a8a; }
+:root[data-skin="terminal"] .composer textarea { padding-left: 18px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='14'%3E%3Ctext x='0' y='11' font-family='Cascadia Mono,Consolas,monospace' font-size='13' fill='%23cccccc'%3E%3E%3C/text%3E%3C/svg%3E") no-repeat 0 7px; border: 0; caret-shape: block; caret-color: var(--fg); }
+:root[data-skin="terminal"] .composer textarea::placeholder { color: var(--fg-4); }
+:root[data-skin="terminal"] .composer .row { border-top: 1px dotted var(--border); margin-top: 4px; padding-top: 4px; }
+:root[data-skin="terminal"] .composer .chip-btn { color: var(--fg-3); font-size: 11.5px; } :root[data-skin="terminal"] .composer .chip-btn span { white-space: nowrap; }
+:root[data-skin="terminal"] .composer .hint { color: var(--fg-4); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:root[data-skin="terminal"] .composer .send { background: transparent; border: 1px solid var(--border-2); color: var(--fg-3); border-radius: 0; } :root[data-skin="terminal"] .composer .send.ready { border-color: var(--fg); color: var(--fg); } :root[data-skin="terminal"] .composer .send.stop { color: var(--bad); border-color: var(--bad); }
+:root[data-skin="terminal"] .chat-empty { color: var(--fg-3); } :root[data-skin="terminal"] .chat-empty .big { color: var(--fg); font-weight: 400; } :root[data-skin="terminal"] .chat-empty .big::before { content: '✻ '; color: var(--accent); } :root[data-skin="terminal"] .chat-empty .big::after { content: '▮'; margin-left: 3px; animation: cc-blink 1s steps(1) infinite; }
+/* tabs and drawer: text tabs, underlined when active, rules instead of pills */
+:root[data-skin="terminal"] .tabs-row { background: var(--bg); } :root[data-skin="terminal"] .tab { padding-left: 6px; }
+:root[data-skin="terminal"] .drawer-bar { border-top: 1px solid var(--border); background: var(--bg); } :root[data-skin="terminal"] .dtab { padding: 0 8px; }
+:root[data-skin="terminal"] .term-pane, :root[data-skin="terminal"] .drawer-host { background: var(--bg); }
+:root[data-skin="terminal"] .preview, :root[data-skin="terminal"] .preview-head { background: var(--bg); border-color: var(--border); }
+:root[data-skin="terminal"] .empty, :root[data-skin="terminal"] .page { background: var(--bg); }
+:root[data-skin="terminal"] .gutter:hover::after, :root[data-skin="terminal"] #app.resizing .gutter::after { background: var(--fg-3); }
 
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; overflow: hidden; }
