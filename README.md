@@ -119,23 +119,19 @@ Claude to Codex or Gemini and ask it to continue; it knows where things stand.
 
 ### Control chats from your phone
 
-Astral can run a Telegram bot so you can prompt a chat and read its replies from
-anywhere, with screenshots of the site it is working on.
+Settings → General → Phone → **Start hosting**. Astral serves a small website on
+this PC; Astral shows the address (for example `http://192.168.1.20:5175`) and a
+4-digit code. Open the address on your phone, enter the code, and you can pick a
+chat, send prompts (with photos), read the replies as they finish, stop a turn,
+and see a screenshot under any reply that mentions a localhost page. The Preview
+button captures any address on demand.
 
-1. In Telegram, message **@BotFather**, send `/newbot`, and copy the token it gives you.
-2. In Astral, Settings → General → Phone, paste the token and Save.
-3. Astral shows a 6-digit code. Message your new bot that code from your phone. Only that chat is ever accepted.
+Your phone has to be able to reach the PC: the same Wi-Fi, or a private network
+such as Tailscale if you want it from anywhere. Windows may ask once to allow
+Astral through the firewall. Nothing leaves your machine and no third-party
+service is involved; Astral must be running.
 
-From then on, plain messages to the bot become prompts for the chosen chat (the
-active one by default) and each finished turn comes back as a message. If the
-reply mentions a localhost address, Astral screenshots that page and sends it as
-a photo. Photos you send are attached to your prompt. Commands: `/sessions`,
-`/use N`, `/status`, `/stop`, `/preview [url]`, `/help`.
-
-The bot uses long polling, so nothing is exposed on your network; Astral has to
-be running for it to work.
-
-### Git, pull requests, checks
+### Git, pull requests, checks### Git, pull requests, checks
 
 The right panel has **Diff** (git status with per-file line counts, review
 comments you can send to the agent), **Checks** (the open PR, its checks, merge,

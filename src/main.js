@@ -652,12 +652,11 @@ function renderSettings() {
         ${tog('notifications', 'Notifications', 'Desktop notification when a turn finishes or an agent needs input while you are elsewhere.')}
         <div class="srow"><div><div class="sl">Sounds</div><div class="ss">A twinkle when an agent finishes while you are in another workspace.</div></div><div class="row-acts"><button class="btn ghost" data-act="sound-test">${ic('volume', 'i-sm')}<span>Test</span></button><button class="toggle ${state.ui.sounds ? 'is-on' : ''}" data-ui-toggle="sounds"><span></span></button></div></div></div>
       <div class="sgroup"><h3>Phone</h3>
-        <div class="srow"><div><div class="sl">Control chats from your phone</div><div class="ss">Runs a Telegram bot inside Astral. Messages you send it become prompts, replies come back, and localhost pages the agent mentions arrive as screenshots. Create a bot with <b>@BotFather</b> on Telegram (<code>/newbot</code>), then paste its token here.</div></div></div>
-        <div class="srow"><div><div class="sl">Bot token</div><div class="ss">${remoteStatusText()}</div></div><div class="row-acts"><input id="remote-token" type="password" placeholder="123456:ABC…" value="${esc(state.remote.token || '')}" style="width:240px"><button class="btn" data-act="remote-save">${ic('check2', 'i-sm')}<span>Save</span></button>${state.remote.chatId ? `<button class="btn ghost" data-act="remote-unpair">${ic('x', 'i-sm')}<span>Unpair</span></button>` : ''}</div></div>
-        ${state.remoteStatus && state.remoteStatus.running && !state.remote.chatId ? `<div class="srow"><div><div class="sl">Pair your phone</div><div class="ss">Open Telegram, message <b>@${esc(state.remoteStatus.bot || 'your bot')}</b>, and send this code. Only that chat will ever be accepted.</div></div><div class="paircode">${esc(state.remoteStatus.code || '')}</div></div>` : ''}
-        <div class="srow"><div><div class="sl">Send site previews</div><div class="ss">After each reply, screenshot the first localhost address the agent mentioned and send it as a photo. <code>/preview &lt;url&gt;</code> works any time.</div></div><button class="toggle ${state.remote.previews ? 'is-on' : ''}" data-act="remote-previews"><span></span></button></div>
-        <div class="srow"><div><div class="sl">Commands</div><div class="ss"><code>/sessions</code> list chats · <code>/use N</code> pick one · <code>/status</code> · <code>/stop</code> interrupt · <code>/preview [url]</code> · <code>/help</code>. Plain text goes to the chosen chat (the active one by default). Photos you send are attached to the prompt.</div></div></div></div>
-      <div class="sgroup"><h3>Sidebar</h3>
+        <div class="srow"><div><div class="sl">Control chats from your phone</div><div class="ss">Astral hosts a small website on this PC. Open it on your phone, enter the code, and you can pick a chat, send prompts, read replies, stop a turn and see previews of localhost pages. Your phone needs to reach this PC: the same Wi-Fi, or a private network like Tailscale. Windows may ask once to allow Astral through the firewall.</div></div><button class="btn ${state.remote.enabled ? '' : 'primary'}" data-act="remote-toggle">${ic(state.remote.enabled ? 'square' : 'play', 'i-sm')}<span>${state.remote.enabled ? 'Stop hosting' : 'Start hosting'}</span></button></div>
+        ${state.remote.enabled ? (state.remoteStatus && state.remoteStatus.running ? `<div class="srow"><div><div class="sl">Open on your phone</div><div class="ss">${(state.remoteStatus.addresses || []).length ? (state.remoteStatus.addresses || []).slice(0, 3).map((a) => `<div><code class="hosturl">${esc(a.url)}</code> <span class="hint">${esc(a.name)}</span></div>`).join('') : 'No network address found. Connect this PC to a network.'}</div></div><div class="row-acts"><button class="btn ghost" data-act="remote-copy">${ic('copy', 'i-sm')}<span>Copy link</span></button></div></div>
+        <div class="srow"><div><div class="sl">Code</div><div class="ss">The page asks for this once per phone. Stop and start hosting for a new one.</div></div><div class="paircode">${esc(state.remoteStatus.code || '')}</div></div>` : `<div class="srow"><div><div class="sl">Not running</div><div class="ss">${esc((state.remoteStatus && state.remoteStatus.error) || 'Starting…')}</div></div></div>`) : ''}
+        <div class="srow"><div><div class="sl">Site previews</div><div class="ss">Show a screenshot under any reply that mentions a localhost address. The Preview button on the phone works regardless.</div></div><button class="toggle ${state.remote.previews ? 'is-on' : ''}" data-act="remote-previews"><span></span></button></div></div>
+
         <div class="srow"><div><div class="sl">Sort workspaces</div><div class="ss">By last activity or by creation time.</div></div>${seg('sidebarSort', [['updated', 'Updated'], ['created', 'Created']])}</div></div>
       <div class="sgroup"><h3>Storage</h3><div class="srow"><div><div class="sl">Workspaces live in</div><div class="ss"><code>${esc(PATHS.workspacesRoot)}</code> — the same layout Conductor uses.</div></div><button class="btn ghost" data-open-path="${esc(PATHS.workspacesRoot)}">${ic('folder', 'i-sm')}<span>Open</span></button></div></div>`;
   } else if (tab === 'repos') {
@@ -1183,65 +1182,67 @@ function onTurnDone(s, ev) {
   }
   refreshChanges(true); refreshGitFor(ws.path);
   updateHandoff(ws);
-  remoteTurnDone(s, ev);
   S.emit('live');
 }
 
 // ---------------------------------------------------------------- phone control
-function remoteStatusText() {
-  const st = state.remoteStatus;
-  if (!state.remote.token) return 'Not set up.';
-  if (!st) return 'Starting…';
-  if (st.error) return `Problem: ${st.error}`;
-  if (!st.running) return 'Bot not running.';
-  return state.remote.chatId ? `Paired with your phone (chat ${state.remote.chatId}) as @${st.bot || 'bot'}.` : `Running as @${st.bot || 'bot'}, waiting for your phone to send the code.`;
-}
-async function remoteConfigure() {
-  try { state.remoteStatus = await window.astral.remote.configure({ token: state.remote.token || '', chatId: state.remote.chatId || null }); } catch { /* ignore */ }
+// The hosted page asks the main process, which asks us: we own the chats.
+async function remoteApply() {
+  try {
+    if (state.remote.enabled) { state.remoteStatus = await window.astral.remote.start({ port: state.remote.port || 5175 }); if (state.remoteStatus.error) toast(`Could not start hosting: ${state.remoteStatus.error}`, true); }
+    else state.remoteStatus = await window.astral.remote.stop();
+  } catch (err) { state.remoteStatus = { running: false, error: err.message }; }
   if (state.view === 'settings') renderSettings();
 }
-window.astral.remote.onStatus((st) => { state.remoteStatus = st; if (state.view === 'settings') renderSettings(); });
-function remoteTarget() {
+function remoteTarget(id) {
   const chats = state.sessions.filter((s) => chat.isChat(s));
-  const t = chats.find((s) => s.id === state.remote.targetSessionId);
-  if (t) return t;
-  const a = S.activeSession(); if (a && chat.isChat(a)) return a;
-  return chats.sort((x, y) => (y.lastActive || 0) - (x.lastActive || 0))[0] || null;
+  return chats.find((s) => s.id === id) || chats.find((s) => s.id === state.remote.targetSessionId) || (S.activeSession() && chat.isChat(S.activeSession()) ? S.activeSession() : null) || chats.sort((x, y) => (y.lastActive || 0) - (x.lastActive || 0))[0] || null;
 }
-const remoteSay = (text) => window.astral.remote.send(text).catch(() => {});
-window.astral.remote.onPrompt(async (p) => {
-  const s = remoteTarget();
-  if (!s) { remoteSay('No Claude chat session is open in Astral. Open one there first, or /sessions.'); return; }
-  const ws = S.workspaceOfSession(s.id);
-  const st = chat.chatS(s.id);
-  if (!chat.isLive(s)) chat.launchChat(s, { resume: !!s.agentSessionId, firstPrompt: p.text, attachments: p.images || [] });
-  else if (chat.isBusy(s)) chat.queueAdd(s, p.text, p.images || []);
-  else chat.chatSend(s, p.text, { attachments: p.images || [] });
-  if (ws) S.touchWorkspace(ws.id);
-  remoteSay(`→ ${s.name}${ws ? ` (${ws.name === 'local' ? basename(ws.path) : ws.name})` : ''}${chat.isBusy(s) && st.queue.length ? ' · queued' : ''}`);
-});
-window.astral.remote.onCommand(async (c) => {
-  const s = remoteTarget();
-  switch (c.cmd) {
-    case 'paired': if (state.view === 'settings') renderSettings(); toast('Phone paired.'); return;
-    case 'start': case 'help': return remoteSay('Send text to prompt the chosen chat. /sessions lists chats, /use N picks one, /status shows what it is doing, /stop interrupts, /preview [url] sends a screenshot (default: the last localhost address in the reply), /help shows this.');
-    case 'sessions': { const chats = state.sessions.filter((x) => chat.isChat(x)); if (!chats.length) return remoteSay('No Claude chat sessions open.'); return remoteSay(chats.map((x, i) => { const w = S.workspaceOfSession(x.id); return `${i + 1}. ${x.name}${w ? ` (${w.name === 'local' ? basename(w.path) : w.name})` : ''}${s && x.id === s.id ? ' ← current' : ''}${chat.isWorking(x) ? ' · working' : ''}`; }).join('\n')); }
-    case 'use': { const chats = state.sessions.filter((x) => chat.isChat(x)); const n = parseInt(c.args, 10); const x = chats[n - 1]; if (!x) return remoteSay(`No chat ${c.args}. /sessions lists them.`); state.remote.targetSessionId = x.id; S.save(); return remoteSay(`Now talking to ${x.name}.`); }
-    case 'status': { if (!s) return remoteSay('No chat chosen.'); const st = chat.chatS(s.id); return remoteSay(`${s.name}: ${chat.isWorking(s) ? 'working' : chat.isLive(s) ? 'idle' : 'not running'}${st.queue.length ? ` · ${st.queue.length} queued` : ''}`); }
-    case 'stop': { if (!s) return remoteSay('No chat chosen.'); if (chat.isLive(s)) { chat.chatInterrupt(s); return remoteSay('Interrupted.'); } return remoteSay('Nothing running.'); }
-    case 'preview': { const url = (c.args || '').trim() || (s && lastLocalUrl(chat.lastAssistantText(s))) || (() => { const w = s && S.workspaceOfSession(s.id); return w && w.port ? `http://localhost:${w.port}` : null; })(); if (!url) return remoteSay('No address to preview. /preview http://localhost:3000'); remoteSay(`Capturing ${url}…`); return window.astral.remote.preview(url, url); }
-    default: return remoteSay(`Unknown command /${c.cmd}. /help lists them.`);
-  }
-});
-function lastLocalUrl(text) { const m = String(text || '').match(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?[^\s)>\]"'`]*/g); return m ? m[m.length - 1] : null; }
-// a finished turn goes to the phone: the reply, then a screenshot of the first local address it mentioned
-async function remoteTurnDone(s, ev) {
-  if (!state.remote.token || !state.remote.chatId) return;
-  const target = remoteTarget(); if (!target || target.id !== s.id) return;
-  const text = chat.lastAssistantText(s) || (ev.is_error ? `Error: ${ev.result || 'unknown'}` : 'Turn finished.');
-  await remoteSay(text.length > 3500 ? text.slice(0, 3500) + '…' : text);
-  if (state.remote.previews) { const url = lastLocalUrl(text); if (url) window.astral.remote.preview(url, url); }
+function remoteSessions() {
+  return state.sessions.filter((s) => chat.isChat(s)).sort((x, y) => (y.lastActive || 0) - (x.lastActive || 0)).map((s) => { const w = S.workspaceOfSession(s.id); return { id: s.id, name: s.name, ws: w ? (w.name === 'local' ? basename(w.path) : w.name) : '', working: chat.isWorking(s), live: chat.isLive(s) }; });
 }
+window.astral.remote.onRequest(async (req) => {
+  const p = req.payload || {};
+  let out;
+  try {
+    switch (req.kind) {
+      case 'state': { const t = remoteTarget(); out = { ok: true, sessions: remoteSessions(), target: t ? t.id : null, previews: state.remote.previews !== false }; break; }
+      case 'messages': {
+        const s = remoteTarget(p.sessionId); if (!s) { out = { ok: true, msgs: [], working: false, queue: [] }; break; }
+        const st = chat.chatS(s.id);
+        const msgs = st.msgs.slice(-80).map((m) => {
+          if (m.kind === 'user') return { kind: 'user', text: m.text, at: m.at };
+          if (m.kind === 'assistant') { const blocks = (m.blocks || []).filter(Boolean); return { kind: 'assistant', text: blocks.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim(), tools: blocks.filter((b) => b.type === 'tool_use').map((b) => { const [verb, target] = chat.toolVerb(b.name, b.input || {}); return { verb, target: String(target || b.name).slice(0, 120), done: !!b.done, error: !!b.error }; }), at: m.at || 0 }; }
+          if (m.kind === 'turn') return { kind: 'turn', ms: m.ms, error: !!m.error, text: m.text };
+          if (m.kind === 'sys') return { kind: 'sys', text: m.text };
+          if (m.kind === 'perm') return { kind: 'sys', text: m.resolved ? `Permission ${m.resolved}: ${m.tool}` : `Waiting for permission in Astral: ${m.tool}` };
+          if (m.kind === 'ask') return { kind: 'sys', text: m.resolved ? 'Question answered in Astral' : 'Claude asked a question: answer it in Astral' };
+          return null;
+        }).filter(Boolean);
+        out = { ok: true, msgs, working: chat.isWorking(s), alive: chat.isLive(s), queue: st.queue.map((q) => q.text) };
+        break;
+      }
+      case 'prompt': {
+        const s = remoteTarget(p.sessionId); if (!s) { out = { ok: false, error: 'No Claude chat is open in Astral' }; break; }
+        const text = String(p.text || '').trim(); const images = [];
+        for (const im of (p.images || []).slice(0, 4)) { try { images.push(await imageFromDataUrl(im.dataUrl, im.name || 'photo.jpg')); } catch { /* skip */ } }
+        if (!text && !images.length) { out = { ok: false, error: 'Empty message' }; break; }
+        const msg = text || 'See the attached image.';
+        let queued = false;
+        if (!chat.isLive(s)) chat.launchChat(s, { resume: !!s.agentSessionId, firstPrompt: msg, attachments: images });
+        else if (chat.isBusy(s)) { chat.queueAdd(s, msg, images); queued = true; }
+        else chat.chatSend(s, msg, { attachments: images });
+        const ws = S.workspaceOfSession(s.id); if (ws) S.touchWorkspace(ws.id);
+        out = { ok: true, queued, session: s.name };
+        break;
+      }
+      case 'stop': { const s = remoteTarget(p.sessionId); if (s && chat.isLive(s)) chat.chatInterrupt(s); out = { ok: true }; break; }
+      case 'use': { const s = remoteTarget(p.sessionId); if (s) { state.remote.targetSessionId = s.id; S.save(); } out = { ok: !!s }; break; }
+      default: out = { ok: false, error: 'unknown request' };
+    }
+  } catch (err) { out = { ok: false, error: err.message }; }
+  window.astral.remote.respond(req.id, out);
+});
 window.astral.onNotifyClick((tag) => { const ws = state.workspaces.find((w) => w.id === tag); if (ws) S.setActiveWorkspace(ws.id); });
 window.astral.win.onFocus((f) => { state.winFocused = f; if (f) { const ws = S.activeWorkspace(); if (ws && ws.unread) { ws.unread = false; S.save(); S.emit('live'); } } });
 function nextAttention() {
@@ -1554,8 +1555,8 @@ async function action(act, el, e) {
     case 'gh-recheck': state.ghAvailable = await window.astral.gh.recheck(); toast(state.ghAvailable ? 'GitHub CLI found.' : 'gh is still not on PATH.', !state.ghAvailable); S.emit('pr'); if (state.view === 'settings') renderSettings(); return;
     case 'gh-login': if (ws) runInDrawer(ws, 'install:ghlogin', 'gh auth login', 'gh auth login'); return;
     case 'sound-test': return sound.done();
-    case 'remote-save': { const v = ($('remote-token') || {}).value || ''; state.remote.token = v.trim(); if (!state.remote.token) state.remote.chatId = null; S.save(); remoteConfigure(); toast(state.remote.token ? 'Bot token saved. Starting the bot…' : 'Phone control turned off.'); return; }
-    case 'remote-unpair': state.remote.chatId = null; S.save(); remoteConfigure(); toast('Unpaired. A new code is shown.'); return;
+    case 'remote-toggle': state.remote.enabled = !state.remote.enabled; S.save(); remoteApply().then(() => toast(state.remote.enabled ? 'Hosting. Open the link on your phone.' : 'Stopped hosting.')); return;
+    case 'remote-copy': { const a = state.remoteStatus && state.remoteStatus.addresses && state.remoteStatus.addresses[0]; if (a) { navigator.clipboard.writeText(a.url); toast('Link copied.'); } return; }
     case 'remote-previews': state.remote.previews = !state.remote.previews; S.save(); renderSettings(); return;
     case 'convo-refresh': return loadConvos(true).then(() => { fillConvoProjects(); renderConvoList(); });
     case 'handoff-refresh': if (ws) { toast('Updating the handoff…'); updateHandoff(ws).then((r) => toast(r ? 'Handoff updated.' : 'No agent conversation to summarize yet.', !r)); } return;
@@ -1683,7 +1684,7 @@ window.__astral = { state, S, tmMain, tmDrawer, REGISTRY, chat, diff };
   state.winFocused = await window.astral.win.isFocused();
   await S.load();
   applyTheme(); applyWidths();
-  remoteConfigure();
+  remoteApply();
   if (state.activeWorkspaceId) { state.history = [state.activeWorkspaceId]; state.historyIdx = 0; }
   for (const r of state.repos) loadScripts(r);
   state.ghAvailable = await window.astral.gh.available();

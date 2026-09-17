@@ -43,7 +43,7 @@ export const state = {
   chat: {},
   scripts: {},           // repoId -> conductor settings
   ghAvailable: null,
-  remote: { token: '', chatId: null, previews: true, targetSessionId: null },  // phone control over Telegram
+  remote: { enabled: false, port: 5175, code: null, previews: true, targetSessionId: null },  // phone control: hosted page
   remoteStatus: null,
   history: [], historyIdx: -1,
   loaded: false,

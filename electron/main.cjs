@@ -727,20 +727,21 @@ ipcMain.handle('telemetry:watch', (_e, opts) => {
 });
 ipcMain.handle('telemetry:unwatch', (_e, sessionId) => { agents.unwatch(sessionId); return true; });
 
-// ---- phone control (Telegram) ----
-const remote = new remoteMod.Remote({
-  onPrompt: (p) => send('remote:prompt', p),
-  onCommand: (c) => send('remote:command', c),
-  onStatus: (st) => send('remote:status', st),
+// ---- phone control: a website hosted on this PC ----
+// Requests from the phone page are answered by the renderer, which owns the chats.
+const pendingReq = new Map(); let reqSeq = 0;
+const bridge = (kind, payload) => new Promise((resolve) => {
+  const id = ++reqSeq; pendingReq.set(id, resolve);
+  send('remote:req', { id, kind, payload });
+  setTimeout(() => { if (pendingReq.has(id)) { pendingReq.delete(id); resolve({ ok: false, error: 'Astral did not answer' }); } }, 15000);
 });
-ipcMain.handle('remote:configure', (_e, cfg) => { remote.configure(cfg || {}); return remote.status(); });
-ipcMain.handle('remote:status', () => remote.status());
-ipcMain.handle('remote:send', async (_e, text) => { try { await remote.send(text); return { ok: true }; } catch (err) { return { ok: false, error: err.message }; } });
-ipcMain.handle('remote:preview', async (_e, url, caption) => {
-  try { const png = await remoteMod.capture(url); await remote.sendPhoto(png, caption); return { ok: true, bytes: png.length }; }
-  catch (err) { try { await remote.send(`Could not capture ${url}: ${err.message}`); } catch { /* ignore */ } return { ok: false, error: err.message }; }
-});
+ipcMain.on('remote:res', (_e, id, result) => { const r = pendingReq.get(id); if (r) { pendingReq.delete(id); r(result); } });
+const host = new remoteMod.Host({ bridge });
+ipcMain.handle('remote:start', async (_e, opts) => host.start(opts || {}));
+ipcMain.handle('remote:stop', async () => { await host.stop(); return host.status(); });
+ipcMain.handle('remote:status', () => host.status());
 ipcMain.handle('remote:capture', async (_e, url) => { try { const png = await remoteMod.capture(url); return { ok: true, dataUrl: `data:image/png;base64,${png.toString('base64')}` }; } catch (err) { return { ok: false, error: err.message }; } });
+app.on('will-quit', () => { host.stop(); });
 
 app.whenReady().then(createWindow);
 app.on('window-all-closed', () => {
