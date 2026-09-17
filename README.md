@@ -136,6 +136,10 @@ ask once to allow Astral through the firewall; Astral must be running. If your
 ISP uses shared addressing (CGNAT), inbound connections are blocked and a private
 network such as Tailscale is the alternative.
 
+While hosting, closing the Astral window hides it to the system tray instead of
+quitting, so the chats and the phone site keep running until you stop hosting
+(from the tray icon or Settings) or the PC shuts down.
+
 ### Git, pull requests, checks### Git, pull requests, checks
 
 The right panel has **Diff** (git status with per-file line counts, review

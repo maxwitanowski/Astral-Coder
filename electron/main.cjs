@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Notification } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Notification, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -43,6 +43,13 @@ function createWindow() {
   });
   win.setMenuBarVisibility(false);
   win.once('ready-to-show', () => win.show());
+  // While the phone site is being hosted, closing the window only hides it: the
+  // chats and the site keep running until hosting is stopped or the PC shuts down.
+  win.on('close', (e) => {
+    if (quitting || !host || !host.status().running) return;
+    e.preventDefault(); win.hide(); ensureTray();
+    if (!hintShown && Notification.isSupported()) { hintShown = true; new Notification({ title: 'Astral is still running', body: 'The phone site stays up. Open Astral or stop hosting from the tray icon.', icon: ICON_PNG }).show(); }
+  });
   win.on('maximize', () => win.webContents.send('win:maximized', true));
   win.on('unmaximize', () => win.webContents.send('win:maximized', false));
   win.on('focus', () => win.webContents.send('win:focus', true));
@@ -737,8 +744,28 @@ const bridge = (kind, payload) => new Promise((resolve) => {
 });
 ipcMain.on('remote:res', (_e, id, result) => { const r = pendingReq.get(id); if (r) { pendingReq.delete(id); r(result); } });
 const host = new remoteMod.Host({ bridge });
-ipcMain.handle('remote:start', async (_e, opts) => host.start(opts || {}));
-ipcMain.handle('remote:stop', async () => { await host.stop(); return host.status(); });
+let quitting = false, tray = null, hintShown = false;
+const ICON_PNG = path.join(__dirname, '..', 'assets', 'icon.png');
+const ICON_ICO = path.join(__dirname, '..', 'assets', 'icon.ico');
+function showWin() { if (!win) return; if (!win.isVisible()) win.show(); if (win.isMinimized()) win.restore(); win.focus(); }
+function ensureTray() {
+  if (tray) return;
+  try {
+    tray = new Tray(nativeImage.createFromPath(process.platform === 'win32' ? ICON_ICO : ICON_PNG));
+    tray.setToolTip('Astral · hosting the phone site');
+    tray.setContextMenu(Menu.buildFromTemplate([
+      { label: 'Open Astral', click: showWin },
+      { label: 'Stop hosting and quit', click: async () => { await host.stop(); quitting = true; app.quit(); } },
+      { type: 'separator' },
+      { label: 'Quit', click: () => { quitting = true; app.quit(); } },
+    ]));
+    tray.on('click', showWin); tray.on('double-click', showWin);
+  } catch (err) { console.warn('tray:', err.message); }
+}
+function dropTray() { if (tray) { try { tray.destroy(); } catch { /* ignore */ } tray = null; } }
+app.on('before-quit', () => { quitting = true; });
+ipcMain.handle('remote:start', async (_e, opts) => { const st = await host.start(opts || {}); if (st.running) ensureTray(); return st; });
+ipcMain.handle('remote:stop', async () => { await host.stop(); dropTray(); if (win && !win.isVisible()) { quitting = true; app.quit(); } return host.status(); });
 ipcMain.handle('remote:status', () => host.status());
 ipcMain.handle('remote:publicIp', () => remoteMod.publicIp());
 ipcMain.handle('remote:capture', async (_e, url) => { try { const png = await remoteMod.capture(url); return { ok: true, dataUrl: `data:image/png;base64,${png.toString('base64')}` }; } catch (err) { return { ok: false, error: err.message }; } });
