@@ -88,16 +88,17 @@ ipcMain.handle('chat:history:load', (_e, id) => {
 });
 ipcMain.handle('chat:history:delete', (_e, id) => { try { fs.unlinkSync(path.join(CHATS_DIR(), `${id}.json`)); } catch { /* none */ } return true; });
 // ---- handoff brief for the next agent, written into the workspace
-ipcMain.handle('agents:handoff', (_e, { agent, cwd, agentSessionId, file, agentName }) => {
+ipcMain.handle('agents:handoff', (_e, { agent, cwd, agentSessionId, file, agentName, notes }) => {
   try {
     if (!file && agent === 'claude' && agentSessionId) file = agents.claudeTranscriptPath(cwd, agentSessionId);
     if (!file || !fs.existsSync(file)) return { ok: false, error: 'no transcript' };
-    const md = agents.handoffBrief({ agent, file, agentName: agentName || agent });
+    let md = agents.handoffBrief({ agent, file, agentName: agentName || agent });
+    if (notes && String(notes).trim()) md += `\n## Notes from the user (the workspace Notes tab)\n\n${String(notes).trim()}\n`;
     const dir = path.join(cwd, '.astral'); fs.mkdirSync(dir, { recursive: true });
     const out = path.join(dir, 'handoff.md'); fs.writeFileSync(out, md);
     // keep it out of git without touching .gitignore
     try { const gi = path.join(cwd, '.git', 'info'); if (fs.existsSync(path.join(cwd, '.git')) && fs.statSync(path.join(cwd, '.git')).isDirectory()) { fs.mkdirSync(gi, { recursive: true }); const ex = path.join(gi, 'exclude'); const cur = fs.existsSync(ex) ? fs.readFileSync(ex, 'utf8') : ''; if (!/^\.astral\/?$/m.test(cur)) fs.appendFileSync(ex, (cur && !cur.endsWith('\n') ? '\n' : '') + '.astral/\n'); } } catch { /* not a repo */ }
-    return { ok: true, path: out, rel: '.astral/handoff.md', bytes: md.length };
+    return { ok: true, path: out, rel: '.astral/handoff.md', bytes: md.length, md };
   } catch (err) { return { ok: false, error: err.message }; }
 });
 

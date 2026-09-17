@@ -10,7 +10,7 @@ import { WORK, hasSpinner } from './spinners.js';
 import { imageFromBlob, imageFromDataUrl, imageFilesOf, isImageFile } from './images.js';
 import logoMark from './assets/logo-mark.png';
 import { REGISTRY, agentOf, installCommand, updateCommand, launchWith, hasModel } from './registry.js';
-import { $, esc, basename, dirname, ic, ag, fmtTime, when, kb, slug, samePath, isInstalled, hasUpdate, updateCount, launchCmd, modelOf, modelLabel, pickCity, RUN, highlight, toast, menu, menuAt, closeCtx, modal, promptModal, confirmModal, hooks, sound, bus, LANG_BY_EXT } from './core.js';
+import { $, esc, basename, dirname, ic, ag, fmtTime, when, kb, slug, samePath, isInstalled, hasUpdate, updateCount, launchCmd, modelOf, modelLabel, pickCity, RUN, highlight, toast, menu, menuAt, closeCtx, modal, promptModal, confirmModal, hooks, sound, bus, LANG_BY_EXT , md } from './core.js';
 import * as chat from './chat.js';
 import * as diff from './diff.js';
 
@@ -315,10 +315,20 @@ function renderNotes(ws) {
   const page = $('page');
   if (page.dataset.kind === 'notes' && page.dataset.ws === ws.id) return;
   page.dataset.kind = 'notes'; page.dataset.ws = ws.id;
-  page.innerHTML = `<div class="notes"><div class="notes-head">${ic('notebook')}<span>Notes for ${esc(ws.name)}</span><span class="grow"></span><span class="hint">Private to this workspace, never committed.</span></div><textarea id="notes-ta" placeholder="Plans, links, things to remember. Drag a note into the composer to send it to the agent.">${esc(ws.notes || '')}</textarea></div>`;
+  page.innerHTML = `<div class="notes has-handoff"><div class="notes-head">${ic('notebook')}<span>Notes for ${esc(ws.name)}</span><span class="grow"></span><span class="hint">Never committed. Given to the next agent you start here, together with the handoff below.</span></div><textarea id="notes-ta" placeholder="Plans, links, things to remember. Drag a note into the composer to send it to the agent.">${esc(ws.notes || '')}</textarea></div>`;
   const ta = page.querySelector('#notes-ta');
   let t = null;
   ta.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { ws.notes = ta.value; S.save(); }, 300); });
+  page.querySelector('.notes').insertAdjacentHTML('beforeend', `<div class="handoff" id="handoff-box"></div>`);
+  renderHandoffBox(ws);
+  if (!ws.handoff) updateHandoff(ws);
+}
+// the read-only handoff section under the notes
+function renderHandoffBox(ws) {
+  const box = $('handoff-box'); const page = $('page');
+  if (!box || page.dataset.kind !== 'notes' || page.dataset.ws !== ws.id) return;
+  const open = box.querySelector('details') ? box.querySelector('details').open : true;
+  box.innerHTML = `<details ${open ? 'open' : ''}><summary>${ic('arrowRight', 'i-sm')}<span>Handoff for the next agent</span><span class="hint">${ws.handoff ? `from ${esc(ws.handoffFrom || 'the last agent')} · updated ${esc(when(ws.handoffAt))} · saved as .astral/handoff.md` : 'Written after the first turn in this workspace.'}</span><span class="grow"></span><button class="btn ghost sm" data-act="handoff-refresh">${ic('refresh', 'i-sm')}<span>Refresh</span></button></summary><div class="handoff-body">${ws.handoff ? `<div class="md">${md(ws.handoff)}</div>` : '<div class="hint">No agent conversation here yet.</div>'}</div></details>`;
 }
 function renderScriptPage(ws, kind) {
   const page = $('page');
@@ -564,15 +574,62 @@ async function openPreview(file) {
 function closePreview() { const pv = $('preview'); pv.hidden = true; pv.innerHTML = ''; delete pv.dataset.file; }
 
 // ---------------------------------------------------------------- history & settings pages
+// History: every Claude Code and Codex conversation on this machine, searchable
+// and filterable by project; click one to continue it in a workspace. Archived
+// workspaces sit underneath.
+let convoCache = { at: 0, items: [] }, convoQuery = '', convoProject = 'all';
+async function loadConvos(force = false) {
+  if (!force && Date.now() - convoCache.at < 30000) return convoCache.items;
+  try { convoCache = { at: Date.now(), items: await window.astral.agents.listAll() }; } catch { convoCache = { at: Date.now(), items: [] }; }
+  return convoCache.items;
+}
 function renderHistory() {
   const page = $('page');
   page.dataset.kind = 'history'; delete page.dataset.ws;
-  const list = state.workspaces.filter((w) => w.archived).sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
-  page.innerHTML = `<div class="page-inner"><div class="page-head"><h2>History</h2><span class="sub">Archived workspaces keep their branch. Restore one to get a fresh worktree on that branch.</span></div>
-    ${list.length ? `<div class="hist">${list.map((w) => { const r = S.repoOf(w); return `<div class="hrow"><span class="avatar">${esc((r ? r.name : '?').slice(0, 1).toUpperCase())}</span><div class="lines"><div class="t">${esc(w.branch || w.name)}</div><div class="s">${esc(w.name)} · ${esc(r ? r.name : 'unknown repo')} · archived ${esc(when(w.archivedAt))}</div></div><div class="acts"><button class="btn" data-restore="${w.id}">${ic('archiveRestore', 'i-sm')}<span>Restore</span></button><button class="btn ghost" data-delete-ws="${w.id}">${ic('trash', 'i-sm')}<span>Delete</span></button></div></div>`; }).join('')}</div>`
-      : `<div class="panel-empty">Nothing archived yet. Archive a workspace from its menu once its PR is merged.</div>`}
-    <div class="page-head" style="margin-top:28px"><h2>Past conversations</h2><span class="sub">Every Claude Code and Codex conversation on this machine, resumable into a workspace.</span></div>
-    <div class="acts"><button class="btn" data-act="resume">${ic('history', 'i-sm')}<span>Browse and resume</span><kbd>Ctrl+Shift+R</kbd></button></div></div>`;
+  const archived = state.workspaces.filter((w) => w.archived).sort((a, b) => (b.archivedAt || 0) - (a.archivedAt || 0));
+  page.innerHTML = `<div class="page-inner history">
+    <div class="page-head"><h2>Past conversations</h2><span class="sub">Every Claude Code and Codex conversation on this machine. Click one to continue it here.</span></div>
+    <div class="convo-tools"><div class="search">${ic('search', 'i-sm')}<input id="convo-q" placeholder="Search titles, prompts, folders…" value="${esc(convoQuery)}"></div><select id="convo-project"><option value="all">All projects</option></select><button class="icon-btn sm" data-act="convo-refresh" title="Rescan">${ic('refresh', 'i-sm')}</button></div>
+    <div class="convos" id="convo-list"><div class="hint">Scanning…</div></div>
+    ${archived.length ? `<details class="archived"><summary>${ic('chevronRight', 'i-sm')}<span>Archived workspaces</span><span class="n">${archived.length}</span></summary><div class="hist">${archived.map((w) => { const r = S.repoOf(w); return `<div class="hrow"><span class="avatar">${esc((r ? r.name : '?').slice(0, 1).toUpperCase())}</span><div class="lines"><div class="t">${esc(w.branch || w.name)}</div><div class="s">${esc(w.name)} · ${esc(r ? r.name : 'unknown repo')} · archived ${esc(when(w.archivedAt))}</div></div><div class="acts"><button class="btn sm" data-restore="${w.id}">${ic('history', 'i-sm')}<span>Restore</span></button><button class="btn ghost sm" data-delete-ws="${w.id}">${ic('trash', 'i-sm')}<span>Delete</span></button></div></div>`; }).join('')}</div></details>` : ''}
+  </div>`;
+  const q = page.querySelector('#convo-q'), sel = page.querySelector('#convo-project');
+  q.addEventListener('input', () => { convoQuery = q.value; renderConvoList(); });
+  sel.addEventListener('change', () => { convoProject = sel.value; renderConvoList(); });
+  loadConvos().then(() => { if (page.dataset.kind !== 'history') return; fillConvoProjects(); renderConvoList(); });
+}
+function fillConvoProjects() {
+  const sel = $('convo-project'); if (!sel) return;
+  const folders = [...new Set(convoCache.items.map((x) => x.cwd))].sort((a, b) => basename(a).localeCompare(basename(b)));
+  sel.innerHTML = `<option value="all">All projects</option>` + folders.map((f) => `<option value="${esc(f)}" ${convoProject === f ? 'selected' : ''}>${esc(basename(f))}</option>`).join('');
+  if (convoProject !== 'all' && !folders.includes(convoProject)) { convoProject = 'all'; sel.value = 'all'; }
+}
+function renderConvoList() {
+  const el = $('convo-list'); if (!el) return;
+  const needle = convoQuery.trim().toLowerCase();
+  const items = convoCache.items.filter((x) => (convoProject === 'all' || x.cwd === convoProject) && (!needle || `${x.title || ''} ${x.firstPrompt || ''} ${x.lastPrompt || ''} ${x.cwd}`.toLowerCase().includes(needle)));
+  if (!items.length) { el.innerHTML = `<div class="hint">${convoCache.items.length ? 'Nothing matches.' : 'No conversations found. Claude Code writes them to ~/.claude/projects, Codex to ~/.codex/sessions.'}</div>`; return; }
+  el.innerHTML = items.slice(0, 400).map((x, i) => { const open = state.sessions.find((s) => s.agentSessionId === x.id); return `<button class="convo" data-convo="${i}"><span class="who">${ag(x.agent)}</span><span class="lines"><span class="t">${esc(x.title || x.firstPrompt || '(untitled)')}${open ? ' <span class="tag">open</span>' : ''}</span><span class="p">${esc(x.lastPrompt || x.firstPrompt || '')}</span><span class="s">${esc(basename(x.cwd))} · ${esc(when(x.updatedAt))}</span></span></button>`; }).join('');
+  el.querySelectorAll('[data-convo]').forEach((b) => b.addEventListener('click', () => resumeConversation(items[+b.dataset.convo])));
+}
+// Continue a past conversation: in the workspace for its folder (added if unknown), as a new session
+async function resumeConversation(x) {
+  const open = state.sessions.find((s) => s.agentSessionId === x.id);
+  if (open) { const w = S.workspaceOfSession(open.id); if (w) { S.setActiveWorkspace(w.id); S.setActiveChat(w.id, open.id); S.setView('workspace'); } return; }
+  let ws = state.workspaces.find((w) => !w.archived && samePath(w.path, x.cwd));
+  if (!ws) {
+    let repo = state.repos.find((r) => samePath(r.path, x.cwd));
+    if (!repo) { repo = S.addRepo(basename(x.cwd), x.cwd); await refreshGitFor(x.cwd); loadScripts(repo); toast(`Added ${basename(x.cwd)} as a repository.`); }
+    const g = state.git[x.cwd] || {};
+    ws = S.addWorkspace({ repoId: repo.id, name: 'local', path: x.cwd, branch: g.branch || null, local: true, port: allocPort() });
+  }
+  S.setActiveWorkspace(ws.id); S.setView('workspace');
+  const agentId = x.agentId || x.agent;
+  const s = S.addSession({ workspaceId: ws.id, name: (x.title || x.firstPrompt || agentOf(agentId).name).slice(0, 60), agent: agentId, cwd: ws.path, agentSessionId: x.id, transcript: x.file });
+  if (agentId === 'claude' && !x.title) s.autoName = true;
+  wsTab[ws.id] = 'chat';
+  S.setActiveChat(ws.id, s.id);
+  launch(s, { resume: true });
 }
 
 let pluginFilter = 'all';
@@ -714,13 +771,24 @@ function sendWhenReady(s, text) {
 // When a workspace already has an agent conversation, a new agent gets a brief of
 // it (written by the main process from the transcript into .astral/handoff.md) and
 // is told to read it first, so it continues the work instead of starting cold.
-async function handoffPrompt(ws, prompt) {
-  const prev = S.workspaceSessions(ws.id).filter((x) => x.agentSessionId && (x.agent === 'claude' || x.agent === 'codex')).sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0))[0];
-  if (!prev) return prompt;
+// The workspace's handoff: a brief of the latest agent conversation here plus the
+// user's Notes, written to .astral/handoff.md and kept on the workspace for the
+// Notes tab. Refreshed after every turn, so it is always ready for the next agent.
+function latestAgentSession(ws) { return S.workspaceSessions(ws.id).filter((x) => x.agentSessionId && (x.agent === 'claude' || x.agent === 'codex')).sort((a, b) => (b.lastActive || 0) - (a.lastActive || 0))[0] || null; }
+async function updateHandoff(ws) {
+  const prev = latestAgentSession(ws);
+  if (!prev) return null;
   let r = null;
-  try { r = await window.astral.agents.handoff({ agent: prev.agent, cwd: prev.cwd, agentSessionId: prev.agentSessionId, file: prev.transcript || null, agentName: agentOf(prev.agent).name }); } catch { /* none */ }
-  if (!r || !r.ok) return prompt;
-  const lead = `Before anything else, read ${r.rel} in this folder. It summarizes what ${agentOf(prev.agent).name} did in this workspace so far (what was asked, files changed, where things stand) so you can continue the work rather than start over.`;
+  try { r = await window.astral.agents.handoff({ agent: prev.agent, cwd: prev.cwd, agentSessionId: prev.agentSessionId, file: prev.transcript || null, agentName: agentOf(prev.agent).name, notes: ws.notes || '' }); } catch { /* none */ }
+  if (!r || !r.ok) return null;
+  ws.handoff = r.md; ws.handoffFrom = agentOf(prev.agent).name; ws.handoffAt = Date.now(); S.save();
+  renderHandoffBox(ws);
+  return { ...r, prev };
+}
+async function handoffPrompt(ws, prompt) {
+  const r = await updateHandoff(ws);
+  if (!r) return prompt;
+  const lead = `Before anything else, read ${r.rel} in this folder. It summarizes what ${agentOf(r.prev.agent).name} did in this workspace so far (what was asked, files changed, where things stand) and carries the user's notes, so you can continue the work rather than start over.`;
   return prompt ? `${lead}\n\n${prompt}` : `${lead} Then tell me briefly what state the project is in and wait for my instructions.`;
 }
 function newChat(ws, agent, { prompt = null, perm = null, name = null, mode = null, attachments = [], handoff = true } = {}) {
@@ -1108,6 +1176,7 @@ function onTurnDone(s, ev) {
     sound.choo();
   }
   refreshChanges(true); refreshGitFor(ws.path);
+  updateHandoff(ws);
   S.emit('live');
 }
 window.astral.onNotifyClick((tag) => { const ws = state.workspaces.find((w) => w.id === tag); if (ws) S.setActiveWorkspace(ws.id); });
@@ -1276,25 +1345,7 @@ async function openResume() {
     }
     all = cache[scope]; build();
   };
-  const go = async (i) => {
-    const x = items[i]; if (!x) return;
-    m.close();
-    const open = state.sessions.find((s) => s.agentSessionId === x.id);
-    if (open) { const w = S.workspaceOfSession(open.id); if (w) { S.setActiveWorkspace(w.id); S.setActiveChat(w.id, open.id); } return; }
-    let ws = state.workspaces.find((w) => !w.archived && samePath(w.path, x.cwd));
-    if (!ws) {
-      let repo = state.repos.find((r) => samePath(r.path, x.cwd));
-      if (!repo) { repo = S.addRepo(basename(x.cwd), x.cwd); await refreshGitFor(x.cwd); loadScripts(repo); toast(`Added ${basename(x.cwd)} as a repository.`); }
-      const g = state.git[x.cwd] || {};
-      ws = S.addWorkspace({ repoId: repo.id, name: 'local', path: x.cwd, branch: g.branch || null, local: true, port: allocPort() });
-    }
-    S.setActiveWorkspace(ws.id);
-    const s = S.addSession({ workspaceId: ws.id, name: (x.title || x.firstPrompt || agentOf(x.agentId).name).slice(0, 60), agent: x.agentId, cwd: ws.path, agentSessionId: x.id, transcript: x.file });
-    if (x.agentId === 'claude' && !x.title) s.autoName = true;
-    wsTab[ws.id] = 'chat';
-    S.setActiveChat(ws.id, s.id);
-    launch(s, { resume: true });
-  };
+  const go = async (i) => { const x = items[i]; if (!x) return; m.close(); resumeConversation(x); };
   m.el.querySelector('.scope').addEventListener('click', (e) => { const b = e.target.closest('[data-scope]'); if (!b || b.disabled) return; scope = b.dataset.scope; hi = 0; load(); q.focus(); });
   q.addEventListener('input', () => { hi = 0; build(); });
   q.addEventListener('keydown', (e) => { if (e.key === 'ArrowDown') { hi = Math.min(items.length - 1, hi + 1); build(); e.preventDefault(); } else if (e.key === 'ArrowUp') { hi = Math.max(0, hi - 1); build(); e.preventDefault(); } else if (e.key === 'Enter') go(hi); else if (e.key === 'Tab') { e.preventDefault(); if (cur) { scope = scope === 'here' ? 'all' : 'here'; hi = 0; load(); } } });
@@ -1440,6 +1491,8 @@ async function action(act, el, e) {
     case 'gh-recheck': state.ghAvailable = await window.astral.gh.recheck(); toast(state.ghAvailable ? 'GitHub CLI found.' : 'gh is still not on PATH.', !state.ghAvailable); S.emit('pr'); if (state.view === 'settings') renderSettings(); return;
     case 'gh-login': if (ws) runInDrawer(ws, 'install:ghlogin', 'gh auth login', 'gh auth login'); return;
     case 'sound-test': return sound.done();
+    case 'convo-refresh': return loadConvos(true).then(() => { fillConvoProjects(); renderConvoList(); });
+    case 'handoff-refresh': if (ws) { toast('Updating the handoff…'); updateHandoff(ws).then((r) => toast(r ? 'Handoff updated.' : 'No agent conversation to summarize yet.', !r)); } return;
   }
 }
 document.addEventListener('contextmenu', (e) => {

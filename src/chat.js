@@ -275,6 +275,8 @@ function mdc(text) { let v = mdCache.get(text); if (v === undefined) { if (mdCac
 let chatRaf = null, chatForce = false, target = { el: null, session: null };
 export function mount(el, getSession) { target = { el, getSession }; }
 export function scheduleChat(force = false) { chatForce = chatForce || force; if (chatRaf) return; chatRaf = requestAnimationFrame(() => { chatRaf = null; renderChat(chatForce); chatForce = false; }); }
+// 12.3s under a minute, 2m 42s under an hour, 1h 05m beyond
+export function fmtDur(ms) { const s = ms / 1000; if (s < 60) return s.toFixed(1) + 's'; const m = Math.floor(s / 60), r = Math.round(s % 60); if (m < 60) return `${m}m ${r}s`; const h = Math.floor(m / 60); return `${h}h ${String(m % 60).padStart(2, '0')}m`; }
 export function lastAssistantText(s) {
   const st = chatS(s.id);
   for (let i = st.msgs.length - 1; i >= 0; i--) { const m = st.msgs[i]; if (m.kind === 'assistant') { const t = m.blocks.filter((b) => b && b.type === 'text').map((b) => b.text).join('\n').trim(); if (t) return t; } }
@@ -354,7 +356,7 @@ export function renderChat(force = false) {
     flush();
     if (m.kind === 'user') { const atts = (m.attachments || []).filter((a) => a.kind !== 'image'), imgs = (m.attachments || []).filter((a) => a.kind === 'image'); html += `<div class="msg user"><div class="bubble">${imgs.length ? `<div class="imgs">${imgs.map((a) => `<img src="${a.dataUrl}" alt="${esc(a.name)}" title="${esc(`${a.name} · ${a.w}×${a.h}`)}" data-img-zoom="1">`).join('')}</div>` : ''}${atts.length ? `<div class="atts">${atts.map((a) => `<span class="att">${ic(a.kind === 'comment' ? 'message' : 'paperclip', 'i-sm')}${esc(a.kind === 'comment' ? `${basename(a.file)}${a.line ? ':' + a.line : ''}` : a.kind === 'file' ? basename(a.path) : 'note')}</span>`).join('')}</div>` : ''}${esc(m.text)}</div></div>`; }
     else if (m.kind === 'sys') html += `<div class="sysline ${m.err ? 'err' : ''}">${esc(m.text)}</div>`;
-    else if (m.kind === 'turn') html += `<div class="turn ${m.error ? 'err' : ''}"><span class="t">${m.error ? ic('xCircle', 'i-sm') : ic('checkCircle', 'i-sm')}${m.ms ? (m.ms / 1000).toFixed(1) + 's' : 'done'}</span>${m.cost ? `<span>$${m.cost.toFixed(2)}</span>` : ''}${m.diff ? (m.diff.files ? `<button class="turn-diff" data-turn-diff="${esc(m.from)}" title="Show what this turn changed">${ic('gitCompare', 'i-sm')}<span class="a">+${m.diff.add}</span><span class="d">−${m.diff.del}</span><span>${m.diff.files} file${m.diff.files === 1 ? '' : 's'}</span></button>` : '<span class="nochange">no file changes</span>') : ''}${m.error ? `<span class="errtext">${esc(m.text || 'error')}</span>` : ''}</div>`;
+    else if (m.kind === 'turn') html += `<div class="turn ${m.error ? 'err' : ''}"><span class="t">${m.error ? ic('xCircle', 'i-sm') : ic('checkCircle', 'i-sm')}${m.ms ? fmtDur(m.ms) : 'done'}</span>${m.cost ? `<span>$${m.cost.toFixed(2)}</span>` : ''}${m.diff ? (m.diff.files ? `<button class="turn-diff" data-turn-diff="${esc(m.from)}" title="Show what this turn changed">${ic('gitCompare', 'i-sm')}<span class="a">+${m.diff.add}</span><span class="d">−${m.diff.del}</span><span>${m.diff.files} file${m.diff.files === 1 ? '' : 's'}</span></button>` : '<span class="nochange">no file changes</span>') : ''}${m.error ? `<span class="errtext">${esc(m.text || 'error')}</span>` : ''}</div>`;
     else if (m.kind === 'perm') html += permCard(m);
     else if (m.kind === 'ask') html += askCard(m);
     else if (m.kind === 'assistant') {
