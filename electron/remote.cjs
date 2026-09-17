@@ -4,7 +4,8 @@
 // replies, stop a turn, and see previews of localhost pages the agent mentions.
 // Everything the page needs comes from the renderer over a request/response
 // bridge; the server itself holds no chat state.
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, net } = require('electron');
+const crypto = require('crypto');
 const http = require('http');
 const os = require('os');
 
@@ -21,6 +22,15 @@ async function capture(url, { width = 1180, height = 900, wait = 1500 } = {}) {
   } finally { try { w.destroy(); } catch { /* gone */ } }
 }
 
+async function publicIp() {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
+  try {
+    for (const u of ['https://api.ipify.org?format=json', 'https://ifconfig.me/ip']) {
+      try { const r = await net.fetch(u, { signal: ctl.signal }); const txt = (await r.text()).trim(); const ip = (txt.match(/\d{1,3}(?:\.\d{1,3}){3}/) || [])[0]; if (ip) return { ok: true, ip }; } catch { /* next */ }
+    }
+    return { ok: false, error: 'could not look up the public address' };
+  } finally { clearTimeout(t); }
+}
 function lanAddresses() {
   const out = [];
   for (const [name, list] of Object.entries(os.networkInterfaces())) for (const a of list || []) {
@@ -63,7 +73,7 @@ button { font: inherit; border: 0; border-radius: 10px; padding: 10px 14px; back
 .toast { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%); background: var(--fg); color: #111; padding: 8px 14px; border-radius: 999px; font-size: 13px; }
 .att { display: flex; gap: 6px; flex-wrap: wrap; } .att img { height: 44px; border-radius: 6px; border: 1px solid var(--line); }
 </style></head><body>
-<div id="gate"><div class="box"><div class="logo" style="font-size:22px;font-weight:700;color:var(--accent)">Astral</div><div>Enter the 4-digit code shown in Astral → Settings → Phone</div><input id="code" inputmode="numeric" maxlength="4" autocomplete="one-time-code" placeholder="••••"><div class="err" id="gate-err"></div><button class="send" id="gate-go">Connect</button></div></div>
+<div id="gate"><div class="box"><div class="logo" style="font-size:22px;font-weight:700;color:var(--accent)">Astral</div><div>Enter the code shown in Astral → Settings → Phone</div><input id="code" maxlength="12" autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="code"><div class="err" id="gate-err"></div><button class="send" id="gate-go">Connect</button></div></div>
 <div id="app" hidden>
   <header><span class="logo">Astral</span><select id="sess"></select><span class="dot" id="dot" title="status"></span></header>
   <main id="main"></main>
@@ -78,7 +88,7 @@ const $ = (id) => document.getElementById(id);
 let code = localStorage.getItem('astral-code') || ''; let sessionId = localStorage.getItem('astral-session') || null; let images = []; let lastHtml = new Map(); let previews = true;
 const api = async (path, opts = {}) => { const r = await fetch(path, { ...opts, headers: { 'content-type': 'application/json', 'x-code': code, ...(opts.headers || {}) } }); if (r.status === 401) { gate('Wrong code.'); throw new Error('unauthorized'); } if (r.status === 429) { gate('Too many attempts. Wait a minute.'); throw new Error('locked'); } return r.json(); };
 function gate(msg) { $('gate').hidden = false; $('app').hidden = true; $('gate-err').textContent = msg || ''; $('code').focus(); }
-async function connect() { code = $('code').value.trim(); localStorage.setItem('astral-code', code); try { await api('/api/state'); $('gate').hidden = true; $('app').hidden = false; tick(); } catch (e) { /* gate shown */ } }
+async function connect() { code = $('code').value.trim().toUpperCase(); localStorage.setItem('astral-code', code); try { await api('/api/state'); $('gate').hidden = true; $('app').hidden = false; tick(); } catch (e) { /* gate shown */ } }
 $('gate-go').onclick = connect; $('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(); });
 function toast(t) { const d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1800); }
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -143,10 +153,13 @@ if (code) { $('code').value = code; connect(); } else gate('');
 
 class Host {
   constructor({ bridge }) { this.bridge = bridge; this.server = null; this.port = null; this.code = null; this.fails = []; this.error = null; }
-  status() { return { running: !!this.server, port: this.port, code: this.code, addresses: this.server ? lanAddresses().map((a) => ({ ...a, url: `http://${a.address}:${this.port}` })) : [], error: this.error }; }
-  async start({ port = 5175, code } = {}) {
+  status() { return { running: !!this.server, port: this.port, code: this.code, strong: !!this.strong, addresses: this.server ? lanAddresses().map((a) => ({ ...a, url: `http://${a.address}:${this.port}` })) : [], error: this.error }; }
+  async start({ port = 5175, code, strong = false } = {}) {
     if (this.server) await this.stop();
-    this.code = String(code || Math.floor(1000 + Math.random() * 9000)); this.error = null;
+    // 4 digits is fine on a home network; a page reachable from the internet gets 8 characters
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const gen = () => (strong ? Array.from(crypto.randomBytes(8), (b) => alphabet[b % alphabet.length]).join('') : String(Math.floor(1000 + Math.random() * 9000)));
+    this.code = String(code || gen()); this.strong = !!strong; this.error = null;
     this.server = http.createServer((req, res) => this.route(req, res).catch((err) => { res.writeHead(500, { 'content-type': 'application/json' }); res.end(JSON.stringify({ ok: false, error: err.message })); }));
     await new Promise((resolve, reject) => { this.server.once('error', (err) => { this.error = err.code === 'EADDRINUSE' ? `Port ${port} is already in use` : err.message; this.server = null; reject(err); }); this.server.listen(port, '0.0.0.0', () => { this.port = port; resolve(); }); }).catch(() => {});
     return this.status();
@@ -156,7 +169,7 @@ class Host {
     const given = req.headers['x-code'] || url.searchParams.get('code') || '';
     const now = Date.now(); this.fails = this.fails.filter((t) => now - t < 5 * 60 * 1000);
     if (this.fails.length >= 12) return 'locked';
-    if (given === this.code) return 'ok';
+    if (given.toUpperCase() === this.code) return 'ok';
     this.fails.push(now); return 'no';
   }
   async body(req) { return new Promise((resolve) => { let b = ''; req.on('data', (c) => { b += c; if (b.length > 20 * 1024 * 1024) req.destroy(); }); req.on('end', () => { try { resolve(JSON.parse(b || '{}')); } catch { resolve({}); } }); }); }
@@ -183,4 +196,4 @@ class Host {
   }
 }
 
-module.exports = { Host, capture, lanAddresses };
+module.exports = { Host, capture, lanAddresses, publicIp };

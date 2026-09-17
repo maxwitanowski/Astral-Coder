@@ -43,7 +43,7 @@ export const state = {
   chat: {},
   scripts: {},           // repoId -> conductor settings
   ghAvailable: null,
-  remote: { enabled: false, port: 5175, code: null, previews: true, targetSessionId: null },  // phone control: hosted page
+  remote: { enabled: false, port: 5175, code: null, previews: true, targetSessionId: null, public: false },  // phone control: hosted page; public = reachable through router port forwarding
   remoteStatus: null,
   history: [], historyIdx: -1,
   loaded: false,

@@ -740,6 +740,7 @@ const host = new remoteMod.Host({ bridge });
 ipcMain.handle('remote:start', async (_e, opts) => host.start(opts || {}));
 ipcMain.handle('remote:stop', async () => { await host.stop(); return host.status(); });
 ipcMain.handle('remote:status', () => host.status());
+ipcMain.handle('remote:publicIp', () => remoteMod.publicIp());
 ipcMain.handle('remote:capture', async (_e, url) => { try { const png = await remoteMod.capture(url); return { ok: true, dataUrl: `data:image/png;base64,${png.toString('base64')}` }; } catch (err) { return { ok: false, error: err.message }; } });
 app.on('will-quit', () => { host.stop(); });
 

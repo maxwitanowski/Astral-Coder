@@ -454,6 +454,7 @@ kbd { font: 10.5px var(--sans); color: var(--fg-3); background: var(--bg-3); bor
 .notes-head { display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid var(--border); font-weight: 600; font-size: 12.5px; }
 .notes textarea { border: 0; outline: 0; resize: none; padding: 18px 24px; background: var(--bg); color: var(--fg); font: 13.5px/1.6 var(--sans); user-select: text; }
 .notes.has-handoff { grid-template-rows: 40px minmax(0, 1fr) auto; }
+.steps-list { margin: 6px 0 8px; padding-left: 18px; display: grid; gap: 4px; } .steps-list li { color: var(--fg-2); }
 .paircode { font: 700 26px/1 var(--mono); letter-spacing: .18em; color: var(--accent); border: 1px dashed var(--border-2); border-radius: var(--radius); padding: 10px 16px; user-select: text; }
 .row-acts input { height: 30px; padding: 0 10px; border: 1px solid var(--border-2); border-radius: var(--radius); background: var(--card); color: var(--fg); font-family: var(--mono); font-size: 12px; }
 /* history: past conversations */

@@ -32,7 +32,7 @@ contextBridge.exposeInMainWorld('astral', {
   ai: { oneshot: inv('ai:oneshot') },
   plugins: { versions: inv('plugins:versions') },
   remote: {
-    start: inv('remote:start'), stop: inv('remote:stop'), status: inv('remote:status'), capture: inv('remote:capture'),
+    start: inv('remote:start'), stop: inv('remote:stop'), status: inv('remote:status'), capture: inv('remote:capture'), publicIp: inv('remote:publicIp'),
     onRequest: (fn) => on('remote:req', fn), respond: (id, result) => ipcRenderer.send('remote:res', id, result),
   },
   chat: {

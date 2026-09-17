@@ -126,10 +126,13 @@ chat, send prompts (with photos), read the replies as they finish, stop a turn,
 and see a screenshot under any reply that mentions a localhost page. The Preview
 button captures any address on demand.
 
-Your phone has to be able to reach the PC: the same Wi-Fi, or a private network
-such as Tailscale if you want it from anywhere. Windows may ask once to allow
-Astral through the firewall. Nothing leaves your machine and no third-party
-service is involved; Astral must be running.
+On your home network the address works as is. To use it away from home, turn on
+**Internet access (port forwarding)** in the same settings: Astral shows your
+public address, switches to an 8-character code, and lists the router steps
+(forward TCP port 5175 to this PC). No outside service is involved. Windows may
+ask once to allow Astral through the firewall; Astral must be running. If your
+ISP uses shared addressing (CGNAT), inbound connections are blocked and a private
+network such as Tailscale is the alternative.
 
 ### Git, pull requests, checks### Git, pull requests, checks
 
