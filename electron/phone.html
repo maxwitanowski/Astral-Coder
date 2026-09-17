@@ -1,7 +1,7 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<html lang="en" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>Astral</title>
-<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff"><meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141416">
+<meta name="theme-color" content="#141416">
 <meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Astral">
 <link rel="manifest" href="/manifest.json"><link rel="icon" href="/logo.png"><link rel="apple-touch-icon" href="/icon.png">
 <link rel="stylesheet" href="/app.css">
@@ -35,7 +35,7 @@ html { background: var(--bg); } html, body { height: 100%; } body { overflow: hi
 .sheet .srow .sl { font-weight: 600; font-size: 14px; } .sheet .srow .ss { color: var(--fg-3); font-size: 12px; }
 .sheet .seg button { height: 30px; } .sheet .srow.stack { flex-direction: column; align-items: stretch; }
 .sheet .grow { flex: 1; }
-.ph-gate { position: fixed; inset: 0; background: var(--bg); display: grid; place-items: center; padding: 24px; z-index: 70; } .ph-gate .box { width: 100%; max-width: 320px; display: grid; gap: 12px; text-align: center; }
+.ph-gate { position: fixed; inset: 0; background: var(--bg); color: var(--fg); display: grid; place-items: center; padding: 24px; z-index: 70; } .ph-gate .box { width: 100%; max-width: 320px; display: grid; gap: 12px; text-align: center; }
 .ph-gate .logo { display: flex; justify-content: center; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; color: var(--fg); } .ph-gate .logo img { width: 28px; height: 28px; }
 .ph-gate input { font: 700 26px/1 var(--mono); letter-spacing: .25em; text-align: center; background: var(--card); color: var(--fg); border: 1px solid var(--border-2); border-radius: var(--radius-lg); padding: 12px; width: 100%; text-transform: uppercase; }
 .ph-gate .err { color: var(--bad); font-size: 13px; min-height: 18px; }
@@ -77,11 +77,11 @@ setInterval(() => { const now = Date.now(); for (const el of document.querySelec
 
 // ---- theme: follow the app's settings
 function applyUi(ui) {
-  const t = ui.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : ui.theme;
+  // follow what the PC is showing: 'system' means the PC's appearance, not the phone's
+  const t = ui.themeResolved || (ui.theme === 'system' ? 'dark' : ui.theme);
   const h = document.documentElement; h.dataset.theme = t; h.dataset.font = ui.font || 'system'; h.dataset.skin = ui.skin || 'default';
-  const bg = getComputedStyle(document.body).backgroundColor; document.querySelectorAll('meta[name=theme-color]').forEach((m) => { m.content = bg; });
+  const bg = getComputedStyle(document.body).backgroundColor; document.querySelector('meta[name=theme-color]').content = bg;
 }
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => state && applyUi(state.ui));
 
 // ---- data
 async function connect() { code = $('code').value.trim().toUpperCase(); localStorage.setItem('astral-code', code); try { meta = await api('/api/meta'); $('gear').innerHTML = ic('cog'); $('gate').hidden = true; $('ph-app').hidden = false; tick(true); } catch (e) { /* gate shown */ } }

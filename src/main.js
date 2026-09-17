@@ -1213,7 +1213,7 @@ window.astral.remote.onRequest(async (req) => {
   let out;
   try {
     switch (req.kind) {
-      case 'state': { const t = remoteTarget(); const u = state.ui; out = { ok: true, sessions: remoteSessions(), target: t ? t.id : null, previews: state.remote.previews !== false, ui: { theme: u.theme, font: u.font, skin: u.skin || 'default', followUp: u.followUp, sounds: !!u.sounds, notifications: !!u.notifications } }; break; }
+      case 'state': { const t = remoteTarget(); const u = state.ui; out = { ok: true, sessions: remoteSessions(), target: t ? t.id : null, previews: state.remote.previews !== false, ui: { theme: u.theme, themeResolved: document.documentElement.dataset.theme || 'dark', font: u.font, skin: u.skin || 'default', followUp: u.followUp, sounds: !!u.sounds, notifications: !!u.notifications } }; break; }
       case 'meta': {
         const icons = {}; for (const k of ['cog', 'chevronDown', 'cpu', 'check2', 'gauge', 'book', 'plus', 'arrowUp', 'square', 'x', 'paperclip', 'search']) icons[k] = I[k] || '';
         out = { ok: true, icons, agents: REGISTRY.filter((r) => r.id !== 'shell').map((r) => ({ id: r.id, name: r.name, color: r.color, svg: brandSvg(r.icon) })) };
