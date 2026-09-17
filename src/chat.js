@@ -322,23 +322,9 @@ function permCard(m) {
     ${m.resolved ? '' : `<div class="acts"><button class="btn primary" data-perm-allow="${esc(m.request_id)}">Allow <kbd>↵</kbd></button><button class="btn" data-perm-always="${esc(m.request_id)}">Always allow ${esc(m.tool)}</button><button class="btn ghost" data-perm-deny="${esc(m.request_id)}">Deny <kbd>⌫</kbd></button></div>`}</div>`;
 }
 
-export function renderChat(force = false) {
-  const el = target.el; if (!el) return;
-  const s = target.getSession ? target.getSession() : null;
-  if (!s || !isChat(s)) return;
-  const st = chatS(s.id);
-  if (el.dataset.session !== s.id) { el.dataset.session = s.id; el.innerHTML = ''; st.domParts = null; force = true; }
-  // never pull the view while the reader is selecting text in it
-  const sel = window.getSelection();
-  const selecting = sel && !sel.isCollapsed && sel.rangeCount && el.contains(sel.getRangeAt(0).commonAncestorContainer);
-  const nearBottom = (force || el.scrollHeight - el.scrollTop - el.clientHeight < 140) && !selecting;
-  const open = new Set([...el.querySelectorAll('.tool.is-open')].map((x) => x.dataset.tool));
-  const openThink = new Set([...el.querySelectorAll('details.think[open]')].map((x) => x.dataset.k));
-  if (!st.msgs.length) {
-    el.innerHTML = `<div class="chat-empty">${st.hydrating ? 'Loading the conversation…' : st.started ? (st.alive ? `<div class="big">Claude is ready.</div><div>Describe what you want done in this workspace.</div>` : 'Claude is not running. Send a message to start it.') : `<div class="big">Start the conversation.</div><div>Your message starts Claude Code in this workspace. Files, terminal and diff are on the right.</div>`}</div>`;
-    st.domParts = null;
-    return;
-  }
+// The rows of a conversation as HTML strings: one per message (consecutive tool-only
+// replies merged). Used by the chat view here and by the phone page over the bridge.
+export function buildParts(s, st, open = new Set(), openThink = new Set()) {
   // one HTML string per row; rows whose string is unchanged keep their DOM nodes
   const parts = [];
   let html = '';
@@ -386,6 +372,27 @@ export function renderChat(force = false) {
   const last = st.msgs[st.msgs.length - 1];
   flush();
   if (st.working && last && last.kind === 'user') parts.push(`<div class="msg assistant"><span class="who">${WORK('claude')}</span><div class="body"><div class="working">${WORK('claude', { mode: 'line', key: s.id, since: st.turnStart, hint: true, glyph: false })}</div></div></div>`);
+  return parts;
+}
+
+export function renderChat(force = false) {
+  const el = target.el; if (!el) return;
+  const s = target.getSession ? target.getSession() : null;
+  if (!s || !isChat(s)) return;
+  const st = chatS(s.id);
+  if (el.dataset.session !== s.id) { el.dataset.session = s.id; el.innerHTML = ''; st.domParts = null; force = true; }
+  // never pull the view while the reader is selecting text in it
+  const sel = window.getSelection();
+  const selecting = sel && !sel.isCollapsed && sel.rangeCount && el.contains(sel.getRangeAt(0).commonAncestorContainer);
+  const nearBottom = (force || el.scrollHeight - el.scrollTop - el.clientHeight < 140) && !selecting;
+  const open = new Set([...el.querySelectorAll('.tool.is-open')].map((x) => x.dataset.tool));
+  const openThink = new Set([...el.querySelectorAll('details.think[open]')].map((x) => x.dataset.k));
+  if (!st.msgs.length) {
+    el.innerHTML = `<div class="chat-empty">${st.hydrating ? 'Loading the conversation…' : st.started ? (st.alive ? `<div class="big">Claude is ready.</div><div>Describe what you want done in this workspace.</div>` : 'Claude is not running. Send a message to start it.') : `<div class="big">Start the conversation.</div><div>Your message starts Claude Code in this workspace. Files, terminal and diff are on the right.</div>`}</div>`;
+    st.domParts = null;
+    return;
+  }
+  const parts = buildParts(s, st, open, openThink);
   // reconcile: replace only the rows that changed (normally just the last one)
   const prev = st.domParts;
   if (!prev) el.innerHTML = '';

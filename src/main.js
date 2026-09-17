@@ -5,7 +5,7 @@ import './styles.css';
 import { TerminalManager } from './terminals.js';
 import * as S from './store.js';
 import { state } from './store.js';
-import { I } from './icons.js';
+import { I, brandSvg } from './icons.js';
 import { WORK, hasSpinner } from './spinners.js';
 import { imageFromBlob, imageFromDataUrl, imageFilesOf, isImageFile } from './images.js';
 import logoMark from './assets/logo-mark.png';
@@ -1206,14 +1206,39 @@ function remoteTarget(id) {
   return chats.find((s) => s.id === id) || chats.find((s) => s.id === state.remote.targetSessionId) || (S.activeSession() && chat.isChat(S.activeSession()) ? S.activeSession() : null) || chats.sort((x, y) => (y.lastActive || 0) - (x.lastActive || 0))[0] || null;
 }
 function remoteSessions() {
-  return state.sessions.filter((s) => chat.isChat(s)).sort((x, y) => (y.lastActive || 0) - (x.lastActive || 0)).map((s) => { const w = S.workspaceOfSession(s.id); return { id: s.id, name: s.name, ws: w ? (w.name === 'local' ? basename(w.path) : w.name) : '', working: chat.isWorking(s), live: chat.isLive(s) }; });
+  return state.sessions.filter((s) => chat.isChat(s)).sort((x, y) => (y.lastActive || 0) - (x.lastActive || 0)).map((s) => { const w = S.workspaceOfSession(s.id); return { id: s.id, name: s.name, agent: s.agent, color: agentOf(s.agent).color, ws: w ? (w.name === 'local' ? basename(w.path) : w.name) : '', working: chat.isWorking(s), live: chat.isLive(s) }; });
 }
 window.astral.remote.onRequest(async (req) => {
   const p = req.payload || {};
   let out;
   try {
     switch (req.kind) {
-      case 'state': { const t = remoteTarget(); out = { ok: true, sessions: remoteSessions(), target: t ? t.id : null, previews: state.remote.previews !== false }; break; }
+      case 'state': { const t = remoteTarget(); const u = state.ui; out = { ok: true, sessions: remoteSessions(), target: t ? t.id : null, previews: state.remote.previews !== false, ui: { theme: u.theme, font: u.font, skin: u.skin || 'default', followUp: u.followUp, sounds: !!u.sounds, notifications: !!u.notifications } }; break; }
+      case 'meta': {
+        const icons = {}; for (const k of ['cog', 'chevronDown', 'cpu', 'check2', 'gauge', 'book', 'plus', 'arrowUp', 'square', 'x', 'paperclip', 'search']) icons[k] = I[k] || '';
+        out = { ok: true, icons, agents: REGISTRY.filter((r) => r.id !== 'shell').map((r) => ({ id: r.id, name: r.name, color: r.color, svg: brandSvg(r.icon) })) };
+        break;
+      }
+      case 'render': {
+        const s = remoteTarget(p.sessionId); if (!s) { out = { ok: true, parts: [], working: false, alive: false, queue: [], controls: {} }; break; }
+        const st = chat.chatS(s.id); const r = agentOf('claude');
+        const perms = [['auto', 'Auto'], ['acceptEdits', 'Accept edits'], ['manual', 'Ask'], ['plan', 'Plan'], ['bypassPermissions', 'Bypass']];
+        out = { ok: true, parts: chat.buildParts(s, st), working: chat.isWorking(s), alive: chat.isLive(s), queue: st.queue.map((q) => q.text),
+          controls: { model: modelOf(s), modelLabel: modelLabel('claude', modelOf(s)).replace('Default model', st.model ? st.model.replace(/^claude-/, '') : 'default'), models: r.models || [], perm: s.perm || 'auto', permLabel: permLabel(s.perm || 'auto'), perms, effort: s.effort || null, effortLabel: effortLabel(s.effort), efforts: EFFORTS.map((v) => [v, effortLabel(v)]) } };
+        break;
+      }
+      case 'session': {
+        const s = remoteTarget(p.sessionId); if (!s) { out = { ok: false, error: 'No chat' }; break; }
+        if ('perm' in p) setPerm(s, p.perm || 'auto');
+        if ('model' in p) { s.model = p.model || null; S.save(); S.emit('sessions'); if (chat.isLive(s)) { toast(`Restarting Claude with ${modelLabel('claude', s.model)}…`); chat.restartChat(s); } }
+        if ('effort' in p) { s.effort = p.effort || null; S.save(); S.emit('sessions'); if (chat.isLive(s)) chat.restartChat(s); }
+        out = { ok: true }; break;
+      }
+      case 'ui': {
+        if (p.key === 'previews') { state.remote.previews = !!p.value; S.save(); }
+        else if (['theme', 'font', 'skin', 'followUp', 'sounds', 'notifications'].includes(p.key)) { S.setUi({ [p.key]: p.value }); applyTheme(); if (state.view === 'settings') renderSettings(); }
+        out = { ok: true }; break;
+      }
       case 'messages': {
         const s = remoteTarget(p.sessionId); if (!s) { out = { ok: true, msgs: [], working: false, queue: [] }; break; }
         const st = chat.chatS(s.id);

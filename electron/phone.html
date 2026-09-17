@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"><meta name="theme-color" content="#141416">
+<title>Astral</title>
+<link rel="icon" href="/logo.png"><link rel="apple-touch-icon" href="/logo.png">
+<link rel="stylesheet" href="/app.css">
+<style>
+/* the phone shell: the app's own components, laid out for one column */
+html, body { height: 100%; } body { overflow: hidden; -webkit-text-size-adjust: 100%; }
+.ph { position: fixed; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden; background: var(--bg); } .ph > * { min-width: 0; }
+.ph-chat .chat pre, .ph-chat .chat .tool .out { max-width: 100%; } .ph-chat .chat .md { overflow-wrap: anywhere; }
+.ph-top { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px 0 12px; padding-top: env(safe-area-inset-top); box-sizing: content-box; border-bottom: 1px solid var(--border); background: var(--sidebar); }
+.ph-top .logo { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 14px; color: var(--fg); } .ph-top .logo img { width: 20px; height: 20px; display: block; }
+.ph-top .sess { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border-radius: 999px; background: var(--bg-3); color: var(--fg); font-size: 13px; }
+.ph-top .sess .ag { width: 14px; height: 14px; color: var(--ag-color, var(--fg-3)); } .ph-top .sess .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ph-top .sess .wk { flex: none; }
+.ph-top .gear { width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--radius); color: var(--fg-2); } .ph-top .gear .i { width: 18px; height: 18px; }
+.ph-chat { position: relative; min-height: 0; } .ph-chat .chat { position: absolute; inset: 0; overflow-y: auto; padding: 14px 0 20px; -webkit-overflow-scrolling: touch; }
+.ph-chat .chat > * { padding-left: 14px; padding-right: 14px; max-width: none; } .msg { font-size: 15px; } .msg.user .bubble { margin-left: 10%; }
+.ph .composer-wrap { padding: 8px 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); border-top: 1px solid var(--border); background: var(--bg); }
+.ph .composer { max-width: none; } .ph .composer textarea { font-size: 16px; }
+.ph .composer .row { flex-wrap: nowrap; gap: 6px; min-width: 0; } .ph .composer .chips { flex: 1 1 0; width: 0; min-width: 0; contain: inline-size; display: flex; align-items: center; gap: 4px; overflow-x: auto; scrollbar-width: none; } .ph .composer .chips::-webkit-scrollbar { display: none; }
+.ph .composer .chip-btn { flex: none; } .ph .composer .chip-btn span { white-space: nowrap; } .ph .composer .hint { display: none; }
+.ph .composer .send, .ph .composer .plus { flex: none; }
+.ph .composer .plus { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: var(--fg-3); } .ph .composer .plus .i { width: 16px; height: 16px; }
+.ph .atts .att img { height: 34px; border-radius: 6px; }
+.ph-empty { color: var(--fg-3); font-size: 14px; padding: 60px 24px; text-align: center; }
+/* sheets: session picker, chip menus, settings */
+.sheet-bg { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 60; } .sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 61; background: var(--card); border-top: 1px solid var(--border-2); border-radius: 14px 14px 0 0; max-height: 82vh; overflow-y: auto; padding: 8px 8px calc(12px + env(safe-area-inset-bottom)); box-shadow: var(--shadow); }
+.sheet h4 { margin: 8px 8px 6px; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-3); }
+.sheet .opt { width: 100%; display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 8px 10px; border-radius: var(--radius); color: var(--fg); text-align: left; font-size: 14px; }
+.sheet .opt:active { background: var(--hover); } .sheet .opt .ag { width: 16px; height: 16px; color: var(--ag-color, var(--fg-3)); } .sheet .opt .sub { color: var(--fg-3); font-size: 12px; margin-left: auto; }
+.sheet .opt .tick { width: 18px; color: var(--ok); } .sheet .opt .tick .i { width: 15px; height: 15px; }
+.sheet .srow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 10px; border-bottom: 1px solid var(--border); }
+.sheet .srow .sl { font-weight: 600; font-size: 14px; } .sheet .srow .ss { color: var(--fg-3); font-size: 12px; }
+.sheet .seg button { height: 30px; } .sheet .srow.stack { flex-direction: column; align-items: stretch; }
+.sheet .grow { flex: 1; }
+.ph-gate { position: fixed; inset: 0; background: var(--bg); display: grid; place-items: center; padding: 24px; z-index: 70; } .ph-gate .box { width: 100%; max-width: 320px; display: grid; gap: 12px; text-align: center; }
+.ph-gate .logo { display: flex; justify-content: center; align-items: center; gap: 8px; font-weight: 700; font-size: 18px; color: var(--fg); } .ph-gate .logo img { width: 28px; height: 28px; }
+.ph-gate input { font: 700 26px/1 var(--mono); letter-spacing: .25em; text-align: center; background: var(--card); color: var(--fg); border: 1px solid var(--border-2); border-radius: var(--radius-lg); padding: 12px; width: 100%; text-transform: uppercase; }
+.ph-gate .err { color: var(--bad); font-size: 13px; min-height: 18px; }
+.ph-gate .btn.primary { justify-content: center; height: 40px; font-size: 14px; }
+.ph-toast { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); z-index: 80; background: var(--primary); color: var(--primary-fg); padding: 7px 14px; border-radius: 999px; font-size: 13px; }
+[hidden] { display: none !important; }
+</style></head><body>
+<div class="ph-gate" id="gate"><div class="box"><div class="logo"><img src="/logo.png" alt=""><span>Astral</span></div><div style="color:var(--fg-2)">Enter the code shown in Astral → Settings → Phone</div><input id="code" maxlength="12" autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="code"><div class="err" id="gate-err"></div><button class="btn primary" id="gate-go">Connect</button></div></div>
+<div class="ph" id="ph-app" hidden>
+  <div class="ph-top"><span class="logo"><img src="/logo.png" alt=""><span>Astral</span></span><button class="sess" id="sess"><span class="t">…</span></button><button class="gear" id="gear" title="Settings"></button></div>
+  <div class="ph-chat"><div class="chat" id="chat"></div></div>
+  <div class="composer-wrap" id="composer-wrap"></div>
+</div>
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+let code = localStorage.getItem('astral-code') || '', sessionId = localStorage.getItem('astral-session') || null;
+let meta = null, state = null, view = null, images = [], lastParts = null, pollTimer = null, stateAt = 0, sending = false;
+const api = async (path, body) => { const r = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json', 'x-code': code }, body: JSON.stringify(body) } : { headers: { 'x-code': code } }); if (r.status === 401) { gate('Wrong code.'); throw new Error('unauthorized'); } if (r.status === 429) { gate('Too many attempts. Wait a few minutes.'); throw new Error('locked'); } return r.json(); };
+function gate(msg) { $('gate').hidden = false; $('ph-app').hidden = true; $('gate-err').textContent = msg || ''; $('code').focus(); }
+function toast(t) { const d = document.createElement('div'); d.className = 'ph-toast'; d.textContent = t; document.body.appendChild(d); setTimeout(() => d.remove(), 1600); }
+const ic = (k, cls = 'i') => `<span class="${cls}">${(meta && meta.icons[k]) || ''}</span>`;
+const agentSvg = (id) => (meta && meta.agents.find((a) => a.id === id) || {}).svg || '';
+const ag = (id) => { const a = meta && meta.agents.find((x) => x.id === id); return a ? `<span class="ag" style="--ag-color:${a.color}">${a.svg}</span>` : ''; };
+
+// ---- the same per-agent working indicators as the app (frames tick locally)
+const BRAILLE = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+const STYLES = { claude: { frames: ['·', '✢', '✳', '✶', '✻', '✽', '✻', '✶', '✳', '✢'], ms: 120 }, codex: { frames: BRAILLE, ms: 80 }, gemini: { frames: BRAILLE, ms: 80 }, qwen: { frames: BRAILLE, ms: 80 } };
+setInterval(() => { const now = Date.now(); for (const el of document.querySelectorAll('.wk[data-agent]')) { const st = STYLES[el.dataset.agent]; if (!st) continue; const sp = el.querySelector('.sp'); if (sp) { const f = st.frames[Math.floor(now / st.ms) % st.frames.length]; if (sp.textContent !== f) sp.textContent = f; } const since = +el.dataset.since || 0; const e = el.querySelector('.el'); if (e && since) { const s = Math.max(0, Math.round((now - since) / 1000)); const t = '(' + (s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + (s % 60) + 's') + (el.dataset.hint ? ' · esc to interrupt' : '') + ')'; if (e.textContent !== t) e.textContent = t; } } }, 80);
+
+// ---- theme: follow the app's settings
+function applyUi(ui) {
+  const t = ui.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : ui.theme;
+  const h = document.documentElement; h.dataset.theme = t; h.dataset.font = ui.font || 'system'; h.dataset.skin = ui.skin || 'default';
+  document.querySelector('meta[name=theme-color]').content = getComputedStyle(document.body).backgroundColor;
+}
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => state && applyUi(state.ui));
+
+// ---- data
+async function connect() { code = $('code').value.trim().toUpperCase(); localStorage.setItem('astral-code', code); try { meta = await api('/api/meta'); $('gear').innerHTML = ic('cog'); $('gate').hidden = true; $('ph-app').hidden = false; tick(true); } catch (e) { /* gate shown */ } }
+$('gate-go').onclick = connect; $('code').addEventListener('keydown', (e) => { if (e.key === 'Enter') connect(); });
+async function tick(force) {
+  clearTimeout(pollTimer);
+  if (document.hidden && !force) { pollTimer = setTimeout(tick, 2500); return; }
+  try {
+    if (force || Date.now() - stateAt > 4000) { state = await api('/api/state'); stateAt = Date.now(); applyUi(state.ui); renderTop(); }
+    const cur = currentSession();
+    if (cur) { view = await api('/api/render?session=' + encodeURIComponent(cur.id)); renderChat(); renderComposer(); }
+    else { $('chat').innerHTML = '<div class="ph-empty">No Claude chat is open in Astral. Open one there first.</div>'; $('composer-wrap').innerHTML = ''; }
+  } catch (e) { /* gate shown or offline; keep polling */ }
+  pollTimer = setTimeout(tick, 1400);
+}
+function currentSession() { if (!state) return null; return state.sessions.find((s) => s.id === sessionId) || state.sessions.find((s) => s.id === state.target) || state.sessions[0] || null; }
+function renderTop() {
+  const s = currentSession(); const b = $('sess');
+  if (!s) { b.innerHTML = '<span class="t">No chats open</span>'; return; }
+  const html = `${s.working ? `<span class="wk glyph" data-agent="${s.agent}" style="--ag-color:${esc(s.color)}"><span class="sp">✻</span></span>` : ag(s.agent)}<span class="t">${esc(s.name)}</span>${ic('chevronDown', 'i-sm')}`;
+  if (b.innerHTML !== html) b.innerHTML = html;
+  if (sessionId !== s.id) { sessionId = s.id; lastParts = null; }
+}
+function renderChat() {
+  const el = $('chat'); const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 140;
+  const parts = view.parts.length ? view.parts : [`<div class="ph-empty">${view.alive ? 'Ready. Say what you want done.' : 'Send a message to start Claude in this workspace.'}</div>`];
+  const kids = el.children;
+  for (let i = 0; i < parts.length; i++) { if (i < kids.length) { if (!lastParts || lastParts[i] !== parts[i]) kids[i].outerHTML = parts[i]; } else el.insertAdjacentHTML('beforeend', parts[i]); }
+  while (kids.length > parts.length) el.lastElementChild.remove();
+  lastParts = parts;
+  if (nearBottom) el.scrollTop = el.scrollHeight;
+}
+function renderComposer() {
+  const w = $('composer-wrap'); const prev = w.querySelector('#composer-input'); const draft = prev ? prev.value : ''; const hadFocus = prev && document.activeElement === prev;
+  const s = currentSession(); const c = view.controls || {};
+  w.innerHTML = `<div class="composer ${view.working ? 'is-working' : ''}">
+    ${images.length ? `<div class="atts">${images.map((im, i) => `<span class="att img"><img src="${im.dataUrl}" alt=""><span>${esc(im.name)}</span><button class="x" data-rm="${i}">${ic('x', 'i-sm')}</button></span>`).join('')}</div>` : ''}
+    ${view.queue.length ? `<div class="queue">${view.queue.map((q, i) => `<div class="q"><span class="n">${i + 1}</span><span class="qt">${esc(q)}</span></div>`).join('')}<div class="qh">${view.queue.length} queued · sent when the agent is idle</div></div>` : ''}
+    <textarea id="composer-input" rows="1" placeholder="${view.working ? 'Message Claude… (queues until the turn ends)' : 'Message Claude…'}">${esc(draft)}</textarea>
+    <div class="row"><div class="chips">
+      <button class="chip-btn" data-menu="model">${ic('cpu', 'i-sm')}<span>${esc(c.modelLabel || 'Model')}</span>${ic('chevronDown', 'i-sm')}</button>
+      <button class="chip-btn ${c.perm === 'plan' ? 'is-plan' : ''}" data-menu="perm">${ic(c.perm === 'plan' ? 'book' : 'check2', 'i-sm')}<span>${esc(c.permLabel || 'Auto')}</span>${ic('chevronDown', 'i-sm')}</button>
+      <button class="chip-btn ${c.effort ? 'is-set' : ''}" data-menu="effort">${ic('gauge', 'i-sm')}<span>${esc(c.effortLabel || 'Effort')}</span>${ic('chevronDown', 'i-sm')}</button>
+      </div>
+      <button class="plus" id="plus" title="Attach">${ic('plus')}</button><input type="file" id="file" accept="image/*" multiple hidden>
+      ${view.working ? `<button class="send stop" id="stop" title="Stop">${ic('square')}</button>` : ''}<button class="send ${draft.trim() || images.length ? 'ready' : ''}" id="send" title="Send">${ic('arrowUp')}</button>
+    </div></div>`;
+  const ta = w.querySelector('#composer-input'); autosize(ta); if (hadFocus) ta.focus();
+  ta.addEventListener('input', () => { autosize(ta); $('send').classList.toggle('ready', !!ta.value.trim() || images.length > 0); });
+  ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && e.ctrlKey) { e.preventDefault(); send(); } });
+  $('send').onclick = send; $('plus').onclick = () => $('file').click(); if ($('stop')) $('stop').onclick = async () => { await api('/api/stop', { sessionId }); toast('Interrupted'); };
+  $('file').addEventListener('change', () => { for (const f of $('file').files) addImage(f); $('file').value = ''; });
+  w.querySelectorAll('[data-rm]').forEach((b) => b.onclick = () => { images.splice(+b.dataset.rm, 1); renderComposer(); });
+  w.querySelectorAll('[data-menu]').forEach((b) => b.onclick = () => openMenu(b.dataset.menu));
+}
+function autosize(ta) { ta.style.height = 'auto'; ta.style.height = Math.min(160, Math.max(24, ta.scrollHeight)) + 'px'; }
+function addImage(f) { const r = new FileReader(); r.onload = () => { const img = new Image(); img.onload = () => { const k = Math.min(1, 1568 / Math.max(img.width, img.height)); const c = document.createElement('canvas'); c.width = Math.round(img.width * k); c.height = Math.round(img.height * k); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height); images.push({ name: f.name || 'photo.jpg', dataUrl: c.toDataURL('image/jpeg', .85) }); renderComposer(); }; img.src = r.result; }; r.readAsDataURL(f); }
+async function send() {
+  const ta = $('composer-input'); const text = ta.value.trim(); if ((!text && !images.length) || sending) return;
+  sending = true;
+  try { const r = await api('/api/prompt', { sessionId, text: text || 'See the attached image.', images }); if (!r.ok) toast(r.error || 'Could not send'); else { ta.value = ''; images = []; autosize(ta); toast(r.queued ? 'Queued' : 'Sent'); } } catch (e) { toast('Not sent'); }
+  sending = false; tick(true);
+}
+// ---- sheets
+function sheet(html) { const bg = document.createElement('div'); bg.className = 'sheet-bg'; const sh = document.createElement('div'); sh.className = 'sheet'; sh.innerHTML = html; const close = () => { bg.remove(); sh.remove(); }; bg.onclick = close; document.body.append(bg, sh); return { sh, close }; }
+$('sess').onclick = () => {
+  const { sh, close } = sheet(`<h4>Chats</h4>${state.sessions.map((s) => `<button class="opt" data-id="${esc(s.id)}">${ag(s.agent)}<span>${esc(s.name)}</span><span class="sub">${esc(s.ws)}${s.working ? ' · working' : ''}</span><span class="tick">${s.id === (currentSession() || {}).id ? ic('check2', 'i-sm') : ''}</span></button>`).join('') || '<div class="ph-empty">No chats open in Astral.</div>'}`);
+  sh.querySelectorAll('[data-id]').forEach((b) => b.onclick = async () => { sessionId = b.dataset.id; localStorage.setItem('astral-session', sessionId); lastParts = null; $('chat').innerHTML = ''; await api('/api/use', { sessionId }); close(); tick(true); });
+};
+function openMenu(kind) {
+  const c = view.controls || {}; let items = [], title = '';
+  if (kind === 'model') { title = 'Model'; items = [{ id: '', label: "Default (Claude's own settings)", on: !c.model }, ...(c.models || []).map(([id, label]) => ({ id, label, sub: id === label ? '' : id, on: c.model === id }))]; }
+  if (kind === 'perm') { title = 'Permissions'; items = (c.perms || []).map(([id, label]) => ({ id, label, on: (c.perm || 'auto') === id })); }
+  if (kind === 'effort') { title = 'Effort'; items = [{ id: '', label: 'Default (your Claude settings)', on: !c.effort }, ...(c.efforts || []).map(([id, label]) => ({ id, label, on: c.effort === id }))]; }
+  const { sh, close } = sheet(`<h4>${esc(title)}</h4>${items.map((it) => `<button class="opt" data-v="${esc(it.id)}"><span class="tick">${it.on ? ic('check2', 'i-sm') : ''}</span><span>${esc(it.label)}</span>${it.sub ? `<span class="sub">${esc(it.sub)}</span>` : ''}</button>`).join('')}`);
+  sh.querySelectorAll('[data-v]').forEach((b) => b.onclick = async () => { close(); const r = await api('/api/session', { sessionId, [kind]: b.dataset.v || null }); toast(r.ok ? 'Applied' : (r.error || 'Failed')); tick(true); });
+}
+$('gear').onclick = () => {
+  const ui = state.ui; const seg = (key, opts) => `<div class="seg">${opts.map(([v, l]) => `<button class="${ui[key] === v ? 'is-on' : ''}" data-ui="${key}" data-value="${v}"><span>${l}</span></button>`).join('')}</div>`;
+  const tog = (key, on) => `<button class="toggle ${on ? 'is-on' : ''}" data-tog="${key}"><span></span></button>`;
+  const { sh, close } = sheet(`<h4>Settings</h4>
+    <div class="srow"><div><div class="sl">Theme</div><div class="ss">Follows the app. Changes apply on the PC too.</div></div>${seg('theme', [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']])}</div>
+    <div class="srow"><div><div class="sl">Font</div></div>${seg('font', [['system', 'System'], ['inter', 'Inter'], ['mono', 'Mono']])}</div>
+    <div class="srow"><div><div class="sl">Skin</div><div class="ss">Terminal look, same as on the PC.</div></div>${seg('skin', [['default', 'Default'], ['terminal', 'Terminal']])}</div>
+    <div class="srow"><div><div class="sl">Follow-up</div><div class="ss">What Send does while the agent is working.</div></div>${seg('followUp', [['queue', 'Queue'], ['steer', 'Interrupt']])}</div>
+    <div class="srow"><div><div class="sl">Site previews</div><div class="ss">Screenshots under replies that mention a localhost page.</div></div>${tog('previews', state.previews)}</div>
+    <div class="srow"><div><div class="sl">Sounds</div><div class="ss">On the PC, when a turn finishes elsewhere.</div></div>${tog('sounds', ui.sounds)}</div>
+    <div class="srow"><div><div class="sl">Notifications</div><div class="ss">Desktop notifications on the PC.</div></div>${tog('notifications', ui.notifications)}</div>
+    <div class="srow"><div><div class="sl">Connected to</div><div class="ss">${esc(location.host)} · code saved on this phone</div></div><button class="btn ghost" id="forget">Forget</button></div>`);
+  sh.querySelectorAll('[data-ui]').forEach((b) => b.onclick = async () => { await api('/api/ui', { key: b.dataset.ui, value: b.dataset.value }); close(); tick(true); });
+  sh.querySelectorAll('[data-tog]').forEach((b) => b.onclick = async () => { const k = b.dataset.tog; await api('/api/ui', { key: k, value: !(k === 'previews' ? state.previews : ui[k]) }); close(); tick(true); });
+  sh.querySelector('#forget').onclick = () => { localStorage.removeItem('astral-code'); location.reload(); };
+};
+document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(true); });
+if (code) { $('code').value = code; connect(); } else gate('');
+</script></body></html>

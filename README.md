@@ -121,10 +121,12 @@ Claude to Codex or Gemini and ask it to continue; it knows where things stand.
 
 Settings → General → Phone → **Start hosting**. Astral serves a small website on
 this PC; Astral shows the address (for example `http://192.168.1.20:5175`) and a
-4-digit code. Open the address on your phone, enter the code, and you can pick a
-chat, send prompts (with photos), read the replies as they finish, stop a turn,
-and see a screenshot under any reply that mentions a localhost page. The Preview
-button captures any address on demand.
+4-digit code. Open the address on your phone and enter the code. The page is
+Astral itself in one column: the same chat rendering, agent marks and working
+animations, the model, permission and effort chips, a + button for photos, and a
+settings sheet behind the gear (theme, font, skin, follow-up behaviour, previews,
+sounds, notifications; changes apply on the PC too). Replies that mention a
+localhost page get a screenshot underneath.
 
 On your home network the address works as is. To use it away from home, turn on
 **Internet access (port forwarding)** in the same settings: Astral shows your
