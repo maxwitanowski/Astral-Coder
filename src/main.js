@@ -1221,6 +1221,7 @@ window.astral.remote.onRequest(async (req) => {
       }
       case 'render': {
         const s = remoteTarget(p.sessionId); if (!s) { out = { ok: true, parts: [], working: false, alive: false, queue: [], controls: {} }; break; }
+        await chat.ensureHistory(s);
         const st = chat.chatS(s.id); const r = agentOf('claude');
         const perms = [['auto', 'Auto'], ['acceptEdits', 'Accept edits'], ['manual', 'Ask'], ['plan', 'Plan'], ['bypassPermissions', 'Bypass']];
         out = { ok: true, parts: chat.buildParts(s, st), working: chat.isWorking(s), alive: chat.isLive(s), queue: st.queue.map((q) => q.text),

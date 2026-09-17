@@ -118,6 +118,15 @@ function drainQueue(s) {
   chatSend(s, q.text, { attachments: q.attachments });
 }
 
+// Saved history is read once per session, the first time anything needs it: the
+// chat view when it launches, or the phone page asking for a chat the desktop
+// has not opened since the app started.
+export async function ensureHistory(s) {
+  const st = chatS(s.id);
+  if (st.msgs.length || st.loadedHistory) return;
+  st.loadedHistory = true;
+  try { const h = await window.astral.chat.historyLoad(s.id); if (Array.isArray(h) && h.length) { st.msgs = h; st.fileHistory = true; st.hydrated = true; st.allow = new Set(); for (const m of h) if (m.kind === 'assistant') for (const b of m.blocks || []) if (b && b.type === 'tool_use' && !b.done) b.done = true; } } catch { /* none */ }
+}
 export async function launchChat(s, { resume = false, firstPrompt = null, attachments = [] } = {}) {
   const st = chatS(s.id);
   if (st.alive) { if (firstPrompt) chatSend(s, firstPrompt, { attachments }); return true; }
@@ -127,7 +136,7 @@ export async function launchChat(s, { resume = false, firstPrompt = null, attach
   st.starting = true; st.started = true; st.working = false; st.pendingPrompt = firstPrompt ? { text: firstPrompt, attachments } : null;
   if (!s.agentSessionId) S.bindAgentSession(s.id, S.uid());
   const doResume = resume && !!s.agentSessionId;
-  if (!st.msgs.length && !st.loadedHistory) { st.loadedHistory = true; try { const h = await window.astral.chat.historyLoad(s.id); if (Array.isArray(h) && h.length) { st.msgs = h; st.fileHistory = true; st.hydrated = true; st.allow = new Set(); for (const m of h) if (m.kind === 'assistant') for (const b of m.blocks || []) if (b && b.type === 'tool_use' && !b.done) b.done = true; } } catch { /* none */ } }
+  await ensureHistory(s);
   st.hydrating = doResume && st.msgs.length === 0; st.resumed = doResume;
   const where = cfg.launchFor(s);
   const r = await window.astral.chat.start({ id: s.id, cwd: where.cwd, addDir: where.addDir, agentSessionId: s.agentSessionId, resume: doResume, model: modelOf(s), permissionMode: s.perm || 'auto', effort: cfg.effort(s), env: cfg.env(s) });
