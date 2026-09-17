@@ -149,8 +149,15 @@ export async function launchChat(s, { resume = false, firstPrompt = null, attach
   scheduleChat(true);
   return true;
 }
-export async function stopChat(s) { const st = chatS(s.id); await window.astral.chat.stop(s.id); st.alive = false; st.working = false; S.setLive(s.id, 'dead'); scheduleChat(true); }
-export async function restartChat(s) { if (!isChat(s)) return; await stopChat(s); const st = chatS(s.id); st.started = false; return launchChat(s, { resume: !!s.agentSessionId }); }
+export async function stopChat(s) { const st = chatS(s.id); st.stopping = true; await window.astral.chat.stop(s.id); st.alive = false; st.working = false; S.setLive(s.id, 'dead'); scheduleChat(true); }
+// Claude only writes a transcript once a turn has run, so a brand-new chat's id
+// cannot be resumed yet: a restart before the first turn starts fresh under the
+// same id instead of failing with "No conversation found".
+export function hasConversation(s) {
+  const st = chatS(s.id);
+  return !!(st.fileHistory || st.hydrated || st.msgs.some((m) => (m.kind === 'turn' && !m.error) || (m.kind === 'assistant' && (m.blocks || []).some((b) => b && ((b.type === 'text' && b.text) || b.type === 'tool_use')))));
+}
+export async function restartChat(s) { if (!isChat(s)) return; await stopChat(s); const st = chatS(s.id); st.started = false; st.retried = false; return launchChat(s, { resume: !!s.agentSessionId && hasConversation(s) }); }
 
 // history for a resumed chat comes from the transcript the tailer replays
 export function hydrateFromEvents(s, evs) {
@@ -245,15 +252,20 @@ window.astral.chat.onEvent((id, ev) => {
       // A resume of a conversation that was never written (a chat that died
       // before its first reply) is restarted fresh under the same id, and the
       // message that was waiting goes out again.
-      const noConvo = st.resumed && st.msgs.some((m) => m.kind === 'sys' && /No conversation found/i.test(m.text));
+      const noConvo = st.resumed && st.msgs.some((m) => (m.kind === 'sys' || m.kind === 'turn') && /No conversation found/i.test(m.text || ''));
       if (noConvo && !st.retried) {
         st.retried = true; st.started = false;
-        const lastUser = [...st.msgs].reverse().find((m) => m.kind === 'user');
-        st.msgs = st.msgs.filter((m) => m.kind !== 'sys' && m.kind !== 'turn' && m !== lastUser);
+        // only a prompt that never got a reply is re-sent
+        const lastIdx = st.msgs.map((m) => m.kind).lastIndexOf('user');
+        const unanswered = lastIdx >= 0 && !st.msgs.slice(lastIdx + 1).some((m) => m.kind === 'assistant' || (m.kind === 'turn' && !m.error));
+        const lastUser = unanswered ? st.msgs[lastIdx] : null;
+        st.msgs = st.msgs.filter((m) => !((m.kind === 'sys' || m.kind === 'turn') && (/No conversation found|Claude exited/i.test(m.text || '') || m.error)) && m !== lastUser);
         st.hydrating = false;
         setTimeout(() => launchChat(s, { resume: false, firstPrompt: lastUser ? lastUser.text : null, attachments: lastUser ? lastUser.attachments : [] }), 100);
         break;
       }
+      // a stop we asked for (restart, close) is not worth a line in the conversation
+      if (st.stopping) { st.stopping = false; break; }
       st.msgs.push({ kind: 'sys', text: `Claude exited (${ev.code})`, err: ev.code !== 0 });
       break;
     }
