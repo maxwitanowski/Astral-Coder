@@ -651,6 +651,12 @@ function renderSettings() {
         ${tog('claudeHome', 'Start Claude Code in your home folder', `Claude keeps its auto-memory per start folder. On, Claude starts in <code>${esc(PATHS.home)}</code> and the workspace is added with --add-dir, so it sees the memory you built up there. Off, it starts in the workspace like a normal <code>claude</code> in that folder. Applies to newly started sessions.`)}
         ${tog('notifications', 'Notifications', 'Desktop notification when a turn finishes or an agent needs input while you are elsewhere.')}
         <div class="srow"><div><div class="sl">Sounds</div><div class="ss">A twinkle when an agent finishes while you are in another workspace.</div></div><div class="row-acts"><button class="btn ghost" data-act="sound-test">${ic('volume', 'i-sm')}<span>Test</span></button><button class="toggle ${state.ui.sounds ? 'is-on' : ''}" data-ui-toggle="sounds"><span></span></button></div></div></div>
+      <div class="sgroup"><h3>Phone</h3>
+        <div class="srow"><div><div class="sl">Control chats from your phone</div><div class="ss">Runs a Telegram bot inside Astral. Messages you send it become prompts, replies come back, and localhost pages the agent mentions arrive as screenshots. Create a bot with <b>@BotFather</b> on Telegram (<code>/newbot</code>), then paste its token here.</div></div></div>
+        <div class="srow"><div><div class="sl">Bot token</div><div class="ss">${remoteStatusText()}</div></div><div class="row-acts"><input id="remote-token" type="password" placeholder="123456:ABC…" value="${esc(state.remote.token || '')}" style="width:240px"><button class="btn" data-act="remote-save">${ic('check2', 'i-sm')}<span>Save</span></button>${state.remote.chatId ? `<button class="btn ghost" data-act="remote-unpair">${ic('x', 'i-sm')}<span>Unpair</span></button>` : ''}</div></div>
+        ${state.remoteStatus && state.remoteStatus.running && !state.remote.chatId ? `<div class="srow"><div><div class="sl">Pair your phone</div><div class="ss">Open Telegram, message <b>@${esc(state.remoteStatus.bot || 'your bot')}</b>, and send this code. Only that chat will ever be accepted.</div></div><div class="paircode">${esc(state.remoteStatus.code || '')}</div></div>` : ''}
+        <div class="srow"><div><div class="sl">Send site previews</div><div class="ss">After each reply, screenshot the first localhost address the agent mentioned and send it as a photo. <code>/preview &lt;url&gt;</code> works any time.</div></div><button class="toggle ${state.remote.previews ? 'is-on' : ''}" data-act="remote-previews"><span></span></button></div>
+        <div class="srow"><div><div class="sl">Commands</div><div class="ss"><code>/sessions</code> list chats · <code>/use N</code> pick one · <code>/status</code> · <code>/stop</code> interrupt · <code>/preview [url]</code> · <code>/help</code>. Plain text goes to the chosen chat (the active one by default). Photos you send are attached to the prompt.</div></div></div></div>
       <div class="sgroup"><h3>Sidebar</h3>
         <div class="srow"><div><div class="sl">Sort workspaces</div><div class="ss">By last activity or by creation time.</div></div>${seg('sidebarSort', [['updated', 'Updated'], ['created', 'Created']])}</div></div>
       <div class="sgroup"><h3>Storage</h3><div class="srow"><div><div class="sl">Workspaces live in</div><div class="ss"><code>${esc(PATHS.workspacesRoot)}</code> — the same layout Conductor uses.</div></div><button class="btn ghost" data-open-path="${esc(PATHS.workspacesRoot)}">${ic('folder', 'i-sm')}<span>Open</span></button></div></div>`;
@@ -1177,7 +1183,64 @@ function onTurnDone(s, ev) {
   }
   refreshChanges(true); refreshGitFor(ws.path);
   updateHandoff(ws);
+  remoteTurnDone(s, ev);
   S.emit('live');
+}
+
+// ---------------------------------------------------------------- phone control
+function remoteStatusText() {
+  const st = state.remoteStatus;
+  if (!state.remote.token) return 'Not set up.';
+  if (!st) return 'Starting…';
+  if (st.error) return `Problem: ${st.error}`;
+  if (!st.running) return 'Bot not running.';
+  return state.remote.chatId ? `Paired with your phone (chat ${state.remote.chatId}) as @${st.bot || 'bot'}.` : `Running as @${st.bot || 'bot'}, waiting for your phone to send the code.`;
+}
+async function remoteConfigure() {
+  try { state.remoteStatus = await window.astral.remote.configure({ token: state.remote.token || '', chatId: state.remote.chatId || null }); } catch { /* ignore */ }
+  if (state.view === 'settings') renderSettings();
+}
+window.astral.remote.onStatus((st) => { state.remoteStatus = st; if (state.view === 'settings') renderSettings(); });
+function remoteTarget() {
+  const chats = state.sessions.filter((s) => chat.isChat(s));
+  const t = chats.find((s) => s.id === state.remote.targetSessionId);
+  if (t) return t;
+  const a = S.activeSession(); if (a && chat.isChat(a)) return a;
+  return chats.sort((x, y) => (y.lastActive || 0) - (x.lastActive || 0))[0] || null;
+}
+const remoteSay = (text) => window.astral.remote.send(text).catch(() => {});
+window.astral.remote.onPrompt(async (p) => {
+  const s = remoteTarget();
+  if (!s) { remoteSay('No Claude chat session is open in Astral. Open one there first, or /sessions.'); return; }
+  const ws = S.workspaceOfSession(s.id);
+  const st = chat.chatS(s.id);
+  if (!chat.isLive(s)) chat.launchChat(s, { resume: !!s.agentSessionId, firstPrompt: p.text, attachments: p.images || [] });
+  else if (chat.isBusy(s)) chat.queueAdd(s, p.text, p.images || []);
+  else chat.chatSend(s, p.text, { attachments: p.images || [] });
+  if (ws) S.touchWorkspace(ws.id);
+  remoteSay(`→ ${s.name}${ws ? ` (${ws.name === 'local' ? basename(ws.path) : ws.name})` : ''}${chat.isBusy(s) && st.queue.length ? ' · queued' : ''}`);
+});
+window.astral.remote.onCommand(async (c) => {
+  const s = remoteTarget();
+  switch (c.cmd) {
+    case 'paired': if (state.view === 'settings') renderSettings(); toast('Phone paired.'); return;
+    case 'start': case 'help': return remoteSay('Send text to prompt the chosen chat. /sessions lists chats, /use N picks one, /status shows what it is doing, /stop interrupts, /preview [url] sends a screenshot (default: the last localhost address in the reply), /help shows this.');
+    case 'sessions': { const chats = state.sessions.filter((x) => chat.isChat(x)); if (!chats.length) return remoteSay('No Claude chat sessions open.'); return remoteSay(chats.map((x, i) => { const w = S.workspaceOfSession(x.id); return `${i + 1}. ${x.name}${w ? ` (${w.name === 'local' ? basename(w.path) : w.name})` : ''}${s && x.id === s.id ? ' ← current' : ''}${chat.isWorking(x) ? ' · working' : ''}`; }).join('\n')); }
+    case 'use': { const chats = state.sessions.filter((x) => chat.isChat(x)); const n = parseInt(c.args, 10); const x = chats[n - 1]; if (!x) return remoteSay(`No chat ${c.args}. /sessions lists them.`); state.remote.targetSessionId = x.id; S.save(); return remoteSay(`Now talking to ${x.name}.`); }
+    case 'status': { if (!s) return remoteSay('No chat chosen.'); const st = chat.chatS(s.id); return remoteSay(`${s.name}: ${chat.isWorking(s) ? 'working' : chat.isLive(s) ? 'idle' : 'not running'}${st.queue.length ? ` · ${st.queue.length} queued` : ''}`); }
+    case 'stop': { if (!s) return remoteSay('No chat chosen.'); if (chat.isLive(s)) { chat.chatInterrupt(s); return remoteSay('Interrupted.'); } return remoteSay('Nothing running.'); }
+    case 'preview': { const url = (c.args || '').trim() || (s && lastLocalUrl(chat.lastAssistantText(s))) || (() => { const w = s && S.workspaceOfSession(s.id); return w && w.port ? `http://localhost:${w.port}` : null; })(); if (!url) return remoteSay('No address to preview. /preview http://localhost:3000'); remoteSay(`Capturing ${url}…`); return window.astral.remote.preview(url, url); }
+    default: return remoteSay(`Unknown command /${c.cmd}. /help lists them.`);
+  }
+});
+function lastLocalUrl(text) { const m = String(text || '').match(/https?:\/\/(?:localhost|127\.0\.0\.1)(?::\d+)?[^\s)>\]"'`]*/g); return m ? m[m.length - 1] : null; }
+// a finished turn goes to the phone: the reply, then a screenshot of the first local address it mentioned
+async function remoteTurnDone(s, ev) {
+  if (!state.remote.token || !state.remote.chatId) return;
+  const target = remoteTarget(); if (!target || target.id !== s.id) return;
+  const text = chat.lastAssistantText(s) || (ev.is_error ? `Error: ${ev.result || 'unknown'}` : 'Turn finished.');
+  await remoteSay(text.length > 3500 ? text.slice(0, 3500) + '…' : text);
+  if (state.remote.previews) { const url = lastLocalUrl(text); if (url) window.astral.remote.preview(url, url); }
 }
 window.astral.onNotifyClick((tag) => { const ws = state.workspaces.find((w) => w.id === tag); if (ws) S.setActiveWorkspace(ws.id); });
 window.astral.win.onFocus((f) => { state.winFocused = f; if (f) { const ws = S.activeWorkspace(); if (ws && ws.unread) { ws.unread = false; S.save(); S.emit('live'); } } });
@@ -1491,6 +1554,9 @@ async function action(act, el, e) {
     case 'gh-recheck': state.ghAvailable = await window.astral.gh.recheck(); toast(state.ghAvailable ? 'GitHub CLI found.' : 'gh is still not on PATH.', !state.ghAvailable); S.emit('pr'); if (state.view === 'settings') renderSettings(); return;
     case 'gh-login': if (ws) runInDrawer(ws, 'install:ghlogin', 'gh auth login', 'gh auth login'); return;
     case 'sound-test': return sound.done();
+    case 'remote-save': { const v = ($('remote-token') || {}).value || ''; state.remote.token = v.trim(); if (!state.remote.token) state.remote.chatId = null; S.save(); remoteConfigure(); toast(state.remote.token ? 'Bot token saved. Starting the bot…' : 'Phone control turned off.'); return; }
+    case 'remote-unpair': state.remote.chatId = null; S.save(); remoteConfigure(); toast('Unpaired. A new code is shown.'); return;
+    case 'remote-previews': state.remote.previews = !state.remote.previews; S.save(); renderSettings(); return;
     case 'convo-refresh': return loadConvos(true).then(() => { fillConvoProjects(); renderConvoList(); });
     case 'handoff-refresh': if (ws) { toast('Updating the handoff…'); updateHandoff(ws).then((r) => toast(r ? 'Handoff updated.' : 'No agent conversation to summarize yet.', !r)); } return;
   }
@@ -1617,6 +1683,7 @@ window.__astral = { state, S, tmMain, tmDrawer, REGISTRY, chat, diff };
   state.winFocused = await window.astral.win.isFocused();
   await S.load();
   applyTheme(); applyWidths();
+  remoteConfigure();
   if (state.activeWorkspaceId) { state.history = [state.activeWorkspaceId]; state.historyIdx = 0; }
   for (const r of state.repos) loadScripts(r);
   state.ghAvailable = await window.astral.gh.available();

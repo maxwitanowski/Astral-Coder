@@ -43,6 +43,8 @@ export const state = {
   chat: {},
   scripts: {},           // repoId -> conductor settings
   ghAvailable: null,
+  remote: { token: '', chatId: null, previews: true, targetSessionId: null },  // phone control over Telegram
+  remoteStatus: null,
   history: [], historyIdx: -1,
   loaded: false,
   winFocused: true,
@@ -51,7 +53,7 @@ export const state = {
 export function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 export function emit(kind = 'all') { for (const fn of listeners) fn(kind); }
 
-const PERSIST = ['repos', 'workspaces', 'sessions', 'activeWorkspaceId', 'view', 'settingsTab', 'ui', 'models', 'launchOverride', 'launcherAgents'];
+const PERSIST = ['repos', 'workspaces', 'sessions', 'activeWorkspaceId', 'view', 'settingsTab', 'ui', 'models', 'launchOverride', 'launcherAgents', 'remote'];
 let saveTimer = null;
 export function save() {
   clearTimeout(saveTimer);
@@ -97,7 +99,7 @@ function migrate(data) {
 export async function load() {
   let data = await window.astral.store.load();
   data = migrate(data);
-  if (data) for (const k of PERSIST) if (k in data) state[k] = k === 'ui' ? { ...state.ui, ...data.ui } : data[k];
+  if (data) for (const k of PERSIST) if (k in data) state[k] = k === 'ui' ? { ...state.ui, ...data.ui } : k === 'remote' ? { ...state.remote, ...data.remote } : data[k];
   for (const w of state.workspaces) { w.viewed = w.viewed || {}; w.comments = w.comments || []; w.checkpoints = w.checkpoints || []; w.notes = w.notes || ''; }
   if (!['workspace', 'history', 'settings'].includes(state.view)) state.view = 'workspace';
   state.loaded = true;

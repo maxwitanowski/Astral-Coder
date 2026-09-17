@@ -31,6 +31,10 @@ contextBridge.exposeInMainWorld('astral', {
   conductor: { settings: inv('conductor:settings'), saveSettings: inv('conductor:saveSettings') },
   ai: { oneshot: inv('ai:oneshot') },
   plugins: { versions: inv('plugins:versions') },
+  remote: {
+    configure: inv('remote:configure'), status: inv('remote:status'), send: inv('remote:send'), preview: inv('remote:preview'), capture: inv('remote:capture'),
+    onPrompt: (fn) => on('remote:prompt', fn), onCommand: (fn) => on('remote:command', fn), onStatus: (fn) => on('remote:status', fn),
+  },
   chat: {
     start: inv('chat:start'), send: (id, obj) => ipcRenderer.send('chat:send', id, obj), stop: inv('chat:stop'), alive: inv('chat:alive'),
     historySave: inv('chat:history:save'), historyLoad: inv('chat:history:load'), historyDelete: inv('chat:history:delete'),
