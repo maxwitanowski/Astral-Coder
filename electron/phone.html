@@ -1,14 +1,16 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"><meta name="theme-color" content="#141416">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
 <title>Astral</title>
-<link rel="icon" href="/logo.png"><link rel="apple-touch-icon" href="/logo.png">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff"><meta name="theme-color" media="(prefers-color-scheme: dark)" content="#141416">
+<meta name="apple-mobile-web-app-capable" content="yes"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="Astral">
+<link rel="manifest" href="/manifest.json"><link rel="icon" href="/logo.png"><link rel="apple-touch-icon" href="/icon.png">
 <link rel="stylesheet" href="/app.css">
 <style>
 /* the phone shell: the app's own components, laid out for one column */
-html, body { height: 100%; } body { overflow: hidden; -webkit-text-size-adjust: 100%; }
+html { background: var(--bg); } html, body { height: 100%; } body { overflow: hidden; -webkit-text-size-adjust: 100%; overscroll-behavior: none; }
 .ph { position: fixed; inset: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-columns: minmax(0, 1fr); overflow: hidden; background: var(--bg); } .ph > * { min-width: 0; }
 .ph-chat .chat pre, .ph-chat .chat .tool .out { max-width: 100%; } .ph-chat .chat .md { overflow-wrap: anywhere; }
-.ph-top { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px 0 12px; padding-top: env(safe-area-inset-top); box-sizing: content-box; border-bottom: 1px solid var(--border); background: var(--sidebar); }
+.ph-top { display: flex; align-items: center; gap: 8px; height: 48px; padding: 0 8px 0 12px; padding-top: env(safe-area-inset-top, 0px); box-sizing: content-box; border-bottom: 1px solid var(--border); background: var(--sidebar); }
 .ph-top .logo { display: inline-flex; align-items: center; gap: 7px; font-weight: 600; font-size: 14px; color: var(--fg); } .ph-top .logo img { width: 20px; height: 20px; display: block; }
 .ph-top .sess { flex: 1; min-width: 0; display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 10px; border-radius: 999px; background: var(--bg-3); color: var(--fg); font-size: 13px; }
 .ph-top .sess .ag { width: 14px; height: 14px; color: var(--ag-color, var(--fg-3)); } .ph-top .sess .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .ph-top .sess .wk { flex: none; }
@@ -40,6 +42,15 @@ html, body { height: 100%; } body { overflow: hidden; -webkit-text-size-adjust: 
 .ph-gate .btn.primary { justify-content: center; height: 40px; font-size: 14px; }
 .ph-toast { position: fixed; left: 50%; bottom: 110px; transform: translateX(-50%); z-index: 80; background: var(--primary); color: var(--primary-fg); padding: 7px 14px; border-radius: 999px; font-size: 13px; }
 [hidden] { display: none !important; }
+/* terminal skin on a phone: same look, sized for a narrow screen */
+:root[data-skin="terminal"] .ph .msg { font-size: 13.5px; line-height: 1.55; } :root[data-skin="terminal"] .ph-chat .chat > * { padding-left: 10px; padding-right: 10px; }
+:root[data-skin="terminal"] .ph .tool .out { margin-left: 18px; } :root[data-skin="terminal"] .ph .steps::after { padding-left: 14px; }
+:root[data-skin="terminal"] .ph-top { border-bottom: 1px solid #8a8a8a; } :root[data-skin="terminal"] .ph-top .sess { background: transparent; border: 1px solid #6e6e6e; }
+:root[data-skin="terminal"] .ph .composer { border-left: 0; border-right: 0; padding-left: 2px; padding-right: 2px; } :root[data-skin="terminal"] .ph .composer textarea { font-size: 15px; }
+:root[data-skin="terminal"] .ph .composer .chip-btn { padding: 0 2px; font-size: 12px; } :root[data-skin="terminal"] .ph .composer .chip-btn::before, :root[data-skin="terminal"] .ph .composer .chip-btn::after { margin: 0 3px; }
+:root[data-skin="terminal"] .ph .composer .plus, :root[data-skin="terminal"] .ph .composer .send { border: 1px solid #6e6e6e; border-radius: 0 !important; }
+:root[data-skin="terminal"] .sheet { border-radius: 0; border-top: 1px solid #d6d6d6; } :root[data-skin="terminal"] .sheet .opt { border-bottom: 1px dotted #2a2a2a; }
+:root[data-skin="terminal"] .ph-gate input { border-radius: 0; }
 </style></head><body>
 <div class="ph-gate" id="gate"><div class="box"><div class="logo"><img src="/logo.png" alt=""><span>Astral</span></div><div style="color:var(--fg-2)">Enter the code shown in Astral → Settings → Phone</div><input id="code" maxlength="12" autocomplete="one-time-code" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="code"><div class="err" id="gate-err"></div><button class="btn primary" id="gate-go">Connect</button></div></div>
 <div class="ph" id="ph-app" hidden>
@@ -68,7 +79,7 @@ setInterval(() => { const now = Date.now(); for (const el of document.querySelec
 function applyUi(ui) {
   const t = ui.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : ui.theme;
   const h = document.documentElement; h.dataset.theme = t; h.dataset.font = ui.font || 'system'; h.dataset.skin = ui.skin || 'default';
-  document.querySelector('meta[name=theme-color]').content = getComputedStyle(document.body).backgroundColor;
+  const bg = getComputedStyle(document.body).backgroundColor; document.querySelectorAll('meta[name=theme-color]').forEach((m) => { m.content = bg; });
 }
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => state && applyUi(state.ui));
 
@@ -103,22 +114,27 @@ function renderChat() {
   lastParts = parts;
   if (nearBottom) el.scrollTop = el.scrollHeight;
 }
+let lastComposerKey = '';
 function renderComposer() {
-  const w = $('composer-wrap'); const prev = w.querySelector('#composer-input'); const draft = prev ? prev.value : ''; const hadFocus = prev && document.activeElement === prev;
+  const w = $('composer-wrap'); const prev = w.querySelector('#composer-input'); const draft = prev ? prev.value : ''; const hadFocus = prev && document.activeElement === prev; const caret = prev ? [prev.selectionStart, prev.selectionEnd] : null; const chipsEl = w.querySelector('.chips'); const chipScroll = chipsEl ? chipsEl.scrollLeft : 0;
   const s = currentSession(); const c = view.controls || {};
-  w.innerHTML = `<div class="composer ${view.working ? 'is-working' : ''}">
+  const html = `<div class="composer ${view.working ? 'is-working' : ''}">
     ${images.length ? `<div class="atts">${images.map((im, i) => `<span class="att img"><img src="${im.dataUrl}" alt=""><span>${esc(im.name)}</span><button class="x" data-rm="${i}">${ic('x', 'i-sm')}</button></span>`).join('')}</div>` : ''}
     ${view.queue.length ? `<div class="queue">${view.queue.map((q, i) => `<div class="q"><span class="n">${i + 1}</span><span class="qt">${esc(q)}</span></div>`).join('')}<div class="qh">${view.queue.length} queued · sent when the agent is idle</div></div>` : ''}
-    <textarea id="composer-input" rows="1" placeholder="${view.working ? 'Message Claude… (queues until the turn ends)' : 'Message Claude…'}">${esc(draft)}</textarea>
+    <textarea id="composer-input" rows="1" placeholder="${view.working ? 'Message Claude… (queues until the turn ends)' : 'Message Claude…'}"></textarea>
     <div class="row"><div class="chips">
       <button class="chip-btn" data-menu="model">${ic('cpu', 'i-sm')}<span>${esc(c.modelLabel || 'Model')}</span>${ic('chevronDown', 'i-sm')}</button>
       <button class="chip-btn ${c.perm === 'plan' ? 'is-plan' : ''}" data-menu="perm">${ic(c.perm === 'plan' ? 'book' : 'check2', 'i-sm')}<span>${esc(c.permLabel || 'Auto')}</span>${ic('chevronDown', 'i-sm')}</button>
       <button class="chip-btn ${c.effort ? 'is-set' : ''}" data-menu="effort">${ic('gauge', 'i-sm')}<span>${esc(c.effortLabel || 'Effort')}</span>${ic('chevronDown', 'i-sm')}</button>
       </div>
       <button class="plus" id="plus" title="Attach">${ic('plus')}</button><input type="file" id="file" accept="image/*" multiple hidden>
-      ${view.working ? `<button class="send stop" id="stop" title="Stop">${ic('square')}</button>` : ''}<button class="send ${draft.trim() || images.length ? 'ready' : ''}" id="send" title="Send">${ic('arrowUp')}</button>
+      ${view.working ? `<button class="send stop" id="stop" title="Stop">${ic('square')}</button>` : ''}<button class="send" id="send" title="Send">${ic('arrowUp')}</button>
     </div></div>`;
-  const ta = w.querySelector('#composer-input'); autosize(ta); if (hadFocus) ta.focus();
+  if (html === lastComposerKey && prev) return;
+  lastComposerKey = html; w.innerHTML = html;
+  const ta = w.querySelector('#composer-input'); ta.value = draft; autosize(ta); $('send').classList.toggle('ready', !!draft.trim() || images.length > 0);
+  if (hadFocus) { ta.focus(); try { ta.setSelectionRange(caret[0], caret[1]); } catch { /* ignore */ } }
+  const chips = w.querySelector('.chips'); if (chips) chips.scrollLeft = chipScroll;
   ta.addEventListener('input', () => { autosize(ta); $('send').classList.toggle('ready', !!ta.value.trim() || images.length > 0); });
   ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey && e.ctrlKey) { e.preventDefault(); send(); } });
   $('send').onclick = send; $('plus').onclick = () => $('file').click(); if ($('stop')) $('stop').onclick = async () => { await api('/api/stop', { sessionId }); toast('Interrupted'); };

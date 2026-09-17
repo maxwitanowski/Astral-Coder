@@ -77,6 +77,8 @@ class Host {
     const json = (obj, status = 200) => { res.writeHead(status, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(obj)); };
     if (url.pathname === '/' || url.pathname === '/index.html') { res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }); return res.end(pageHtml()); }
     if (url.pathname === '/app.css') { const f = assetFile(/\.css$/, path.join(__dirname, '..', 'src', 'styles.css')); res.writeHead(200, { 'content-type': 'text/css; charset=utf-8', 'cache-control': 'no-store' }); return res.end(fs.readFileSync(f)); }
+    if (url.pathname === '/icon.png') { res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'max-age=3600' }); return res.end(fs.readFileSync(path.join(__dirname, '..', 'assets', 'icon.png'))); }
+    if (url.pathname === '/manifest.json') { res.writeHead(200, { 'content-type': 'application/manifest+json', 'cache-control': 'max-age=3600' }); return res.end(JSON.stringify({ name: 'Astral', short_name: 'Astral', start_url: '/', display: 'standalone', background_color: '#141416', theme_color: '#141416', icons: [{ src: '/icon.png', sizes: '512x512', type: 'image/png', purpose: 'any' }] })); }
     if (url.pathname === '/logo.png') { const f = assetFile(/^logo-mark.*\.png$/, path.join(__dirname, '..', 'src', 'assets', 'logo-mark.png')); res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'max-age=3600' }); return res.end(fs.readFileSync(f)); }
     if (!url.pathname.startsWith('/api/')) return json({ ok: false, error: 'not found' }, 404);
     const a = this.authed(req, url);
