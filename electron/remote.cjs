@@ -39,7 +39,7 @@ const PAGE = String.raw`<!doctype html>
 <style>
 :root { color-scheme: dark; --bg:#0d0d0d; --bg2:#161616; --bg3:#1f1f1f; --fg:#ececec; --fg2:#b4b4bb; --fg3:#7e7e88; --line:#2a2a2e; --accent:#d97757; --ok:#4ade80; --bad:#f87171; }
 * { box-sizing: border-box; } html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 -apple-system, "Segoe UI", Roboto, system-ui, sans-serif; }
-#app { display: grid; grid-template-rows: auto minmax(0,1fr) auto; height: 100%; height: 100dvh; }
+#app { display: grid; grid-template-rows: auto minmax(0,1fr) auto; height: 100%; height: 100dvh; } #app[hidden], #gate[hidden] { display: none !important; }
 header { display: flex; align-items: center; gap: 10px; padding: 10px 12px; padding-top: max(10px, env(safe-area-inset-top)); border-bottom: 1px solid var(--line); background: var(--bg2); }
 header .logo { font-weight: 700; color: var(--accent); } header select { flex: 1; min-width: 0; background: var(--bg3); color: var(--fg); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; font-size: 14px; }
 header .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--fg3); flex: none; } header .dot.working { background: var(--accent); animation: pulse 1s ease-in-out infinite; } header .dot.idle { background: var(--ok); }
