@@ -140,7 +140,7 @@ While hosting, closing the Astral window hides it to the system tray instead of
 quitting, so the chats and the phone site keep running until you stop hosting
 (from the tray icon or Settings) or the PC shuts down.
 
-### Git, pull requests, checks### Git, pull requests, checks
+### Git, pull requests, checks
 
 The right panel has **Diff** (git status with per-file line counts, review
 comments you can send to the agent), **Checks** (the open PR, its checks, merge,
